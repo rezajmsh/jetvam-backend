@@ -1,0 +1,132 @@
+spring:
+  application:
+    name: jetvam-services
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+
+server:
+  port: ${JETVAM_SERVICES_PORT:8080}
+  shutdown: graceful
+
+logging:
+  structured:
+    format:
+      console: ${JETVAM_STRUCTURED_LOG_FORMAT:ir.jetvam.infra.observability.logging.OtelStructuredLogFormatter}
+  level:
+    jetvam.http.server: ${JETVAM_HTTP_LOG_LEVEL:INFO}
+    jetvam.http.client: ${JETVAM_HTTP_LOG_LEVEL:INFO}
+    jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
+    jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  tracing:
+    sampling:
+      probability: ${JETVAM_TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      otlp:
+        enabled: ${JETVAM_OTEL_TRACES_EXPORT_ENABLED:false}
+  opentelemetry:
+    enabled: ${JETVAM_OTEL_ENABLED:true}
+    resource-attributes:
+      service.name: ${spring.application.name}
+      service.namespace: jetvam
+      deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
+
+jetvam:
+  observability:
+    enabled: true
+    logging:
+      enabled: true
+      level: ${JETVAM_OBSERVABILITY_EVENT_LEVEL:INFO}
+      include-stack-trace: true
+    tracing:
+      enabled: true
+    metrics:
+      enabled: true
+    http:
+      server:
+        enabled: true
+        log-request: true
+        log-response: true
+        metrics-enabled: true
+        include-query-string: false
+        request-id-header: X-Request-Id
+        request-header-allow-list: [User-Agent, X-Request-Id, X-Correlation-Id]
+        excluded-paths: [/actuator/health, /actuator/prometheus]
+      client:
+        enabled: true
+        logging-enabled: true
+        metrics-enabled: true
+    repository:
+      enabled: true
+      logging-enabled: true
+      metrics-enabled: true
+      tracing-enabled: true
+      slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
+    audit:
+      enabled: true
+      metrics-enabled: true
+      level: ${JETVAM_AUDIT_EVENT_LEVEL:INFO}
+  web:
+    response:
+      envelope-enabled: true
+      excluded-paths: [/actuator, /v3/api-docs, /swagger-ui]
+    errors:
+      include-details: true
+  persist:
+    enabled: true
+    url: ${JETVAM_DB_URL:jdbc:postgresql://localhost:5432/jetvam}
+    username: ${JETVAM_DB_USERNAME:jetvam}
+    password: ${JETVAM_DB_PASSWORD:jetvam}
+    driver-class-name: org.postgresql.Driver
+    default-schema: jetvam
+    pool:
+      name: jetvam-services-pool
+      minimum-idle: ${JETVAM_DB_POOL_MIN_SIZE:5}
+      maximum-pool-size: ${JETVAM_DB_POOL_MAX_SIZE:30}
+      connection-timeout: 30s
+      validation-timeout: 5s
+      idle-timeout: 10m
+      max-lifetime: 30m
+    jpa:
+      ddl-auto: validate
+      show-sql: ${JETVAM_JPA_SHOW_SQL:false}
+      format-sql: ${JETVAM_JPA_FORMAT_SQL:false}
+      jdbc-time-zone: UTC
+      jdbc-batch-size: 50
+    migration:
+      enabled: true
+      locations: classpath:db/migration
+      validate-on-migrate: true
+  cache:
+    enabled: true
+    provider: ${JETVAM_CACHE_PROVIDER:local}
+    names: [i18n-messages]
+    local:
+      maximum-size: 10000
+      expire-after-write: 10m
+      record-stats: true
+    redis:
+      host: ${JETVAM_REDIS_HOST:localhost}
+      port: ${JETVAM_REDIS_PORT:6379}
+      username: ${JETVAM_REDIS_USERNAME:}
+      password: ${JETVAM_REDIS_PASSWORD:}
+      database: ${JETVAM_REDIS_DATABASE:0}
+      ssl: ${JETVAM_REDIS_SSL:false}
+      command-timeout: 3s
+      default-ttl: 10m
+      key-prefix: "jetvam:services:"
+  i18n:
+    enabled: true
+    default-locale: fa-IR
+    table-name: i18n_message
+    cache-name: i18n-messages
+    fallback-to-language: true
+    fallback-to-default-locale: true

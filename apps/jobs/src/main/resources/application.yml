@@ -1,0 +1,102 @@
+spring:
+  application:
+    name: jetvam-jobs
+  main:
+    web-application-type: none
+  threads:
+    virtual:
+      enabled: true
+  batch:
+    job:
+      enabled: false
+  jpa:
+    open-in-view: false
+
+logging:
+  structured:
+    format:
+      console: ${JETVAM_STRUCTURED_LOG_FORMAT:ir.jetvam.infra.observability.logging.OtelStructuredLogFormatter}
+  level:
+    jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
+    jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
+
+management:
+  tracing:
+    sampling:
+      probability: ${JETVAM_TRACING_SAMPLING_PROBABILITY:1.0}
+    export:
+      otlp:
+        enabled: ${JETVAM_OTEL_TRACES_EXPORT_ENABLED:false}
+  opentelemetry:
+    enabled: ${JETVAM_OTEL_ENABLED:true}
+    resource-attributes:
+      service.name: ${spring.application.name}
+      service.namespace: jetvam
+      deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
+
+jetvam:
+  observability:
+    enabled: true
+    logging:
+      enabled: true
+      level: ${JETVAM_OBSERVABILITY_EVENT_LEVEL:INFO}
+    tracing:
+      enabled: true
+    metrics:
+      enabled: true
+    repository:
+      enabled: true
+      logging-enabled: true
+      metrics-enabled: true
+      tracing-enabled: true
+      slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
+    audit:
+      enabled: true
+      metrics-enabled: true
+      level: ${JETVAM_AUDIT_EVENT_LEVEL:INFO}
+  persist:
+    enabled: true
+    url: ${JETVAM_DB_URL:jdbc:postgresql://localhost:5432/jetvam}
+    username: ${JETVAM_DB_USERNAME:jetvam}
+    password: ${JETVAM_DB_PASSWORD:jetvam}
+    driver-class-name: org.postgresql.Driver
+    default-schema: jetvam
+    pool:
+      name: jetvam-jobs-pool
+      minimum-idle: ${JETVAM_JOBS_DB_POOL_MIN_SIZE:2}
+      maximum-pool-size: ${JETVAM_JOBS_DB_POOL_MAX_SIZE:15}
+      connection-timeout: 30s
+      validation-timeout: 5s
+      idle-timeout: 10m
+      max-lifetime: 30m
+    jpa:
+      ddl-auto: validate
+      show-sql: ${JETVAM_JPA_SHOW_SQL:false}
+      format-sql: ${JETVAM_JPA_FORMAT_SQL:false}
+      jdbc-time-zone: UTC
+      jdbc-batch-size: 100
+    migration:
+      enabled: false
+      locations: classpath:db/migration
+  cache:
+    enabled: true
+    provider: ${JETVAM_CACHE_PROVIDER:local}
+    names: [i18n-messages]
+    local:
+      maximum-size: 5000
+      expire-after-write: 10m
+    redis:
+      host: ${JETVAM_REDIS_HOST:localhost}
+      port: ${JETVAM_REDIS_PORT:6379}
+      username: ${JETVAM_REDIS_USERNAME:}
+      password: ${JETVAM_REDIS_PASSWORD:}
+      database: ${JETVAM_REDIS_DATABASE:0}
+      ssl: ${JETVAM_REDIS_SSL:false}
+      default-ttl: 10m
+      key-prefix: "jetvam:jobs:"
+  i18n:
+    enabled: true
+    default-locale: fa-IR
+    cache-name: i18n-messages
+  jobs:
+    enabled: true
