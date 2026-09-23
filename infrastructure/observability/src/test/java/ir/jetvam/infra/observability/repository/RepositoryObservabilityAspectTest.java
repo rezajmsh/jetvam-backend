@@ -15,6 +15,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+/**
+ * Verifies the behavior of repository observability aspect.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class RepositoryObservabilityAspectTest {
 
     @Test
@@ -47,6 +55,13 @@ class RepositoryObservabilityAspectTest {
                 .timer()).isNotNull();
     }
 
+    /**
+     * Represents a repository join point used by aspect tests.
+     * Its method allows timing and tracing behavior to be verified.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     private interface CustomerRepository {
     }
 }

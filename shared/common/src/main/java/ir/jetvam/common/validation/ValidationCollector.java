@@ -10,6 +10,9 @@ import java.util.Objects;
 
 /**
  * Accumulates domain-input violations so callers can report all problems in one response.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
  */
 public final class ValidationCollector {
 

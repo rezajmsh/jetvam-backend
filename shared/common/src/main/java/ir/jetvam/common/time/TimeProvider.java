@@ -16,6 +16,9 @@ import java.time.ZonedDateTime;
  * <p>Application code should depend on this abstraction instead of calling
  * {@code Instant.now()} or creating a {@link Clock}. The underlying clock can
  * then be replaced once for tests or special runtime environments.</p>
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
  */
 public interface TimeProvider {
 

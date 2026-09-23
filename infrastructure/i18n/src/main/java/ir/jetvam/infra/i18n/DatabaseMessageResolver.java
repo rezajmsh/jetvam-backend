@@ -15,6 +15,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * Resolves localized messages from the database through the shared cache.
+ * Fallback behavior covers locale, language and default values.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 public final class DatabaseMessageResolver implements MessageResolver {
 
     private final MessageRepository repository;
@@ -130,6 +138,13 @@ public final class DatabaseMessageResolver implements MessageResolver {
         return new MessageFormat(pattern, locale).format(arguments);
     }
 
+    /**
+     * Stores an immutable locale-specific message map in the cache.
+     * Serialization allows the same value to work with local and Redis providers.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     private record CachedMessages(Map<String, String> values) implements Serializable {
         @Serial
         private static final long serialVersionUID = 1L;

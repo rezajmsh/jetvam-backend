@@ -9,7 +9,11 @@ import org.springframework.context.annotation.Bean;
 
 import java.time.Clock;
 
-/** Central auto-configuration for runtime primitives shared by all applications. */
+/** Central auto-configuration for runtime primitives shared by all applications.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 @AutoConfiguration
 public class JetvamCoreAutoConfiguration {
 

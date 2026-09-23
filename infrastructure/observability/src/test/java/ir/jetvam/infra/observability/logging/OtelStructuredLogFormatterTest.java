@@ -13,6 +13,14 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Verifies the behavior of otel structured log formatter.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class OtelStructuredLogFormatterTest {
 
     @Test

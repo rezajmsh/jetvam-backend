@@ -14,6 +14,9 @@ import java.util.Map;
  *
  * <p>Business and infrastructure fields are kept under {@code attributes};
  * trace and span identifiers are promoted to top-level correlation fields.</p>
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
  */
 public final class OtelStructuredLogFormatter implements StructuredLogFormatter<ILoggingEvent> {
 

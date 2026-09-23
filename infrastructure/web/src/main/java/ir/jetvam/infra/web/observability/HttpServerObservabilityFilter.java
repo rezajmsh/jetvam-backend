@@ -26,6 +26,14 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+/**
+ * Processes servlet traffic for http server observability concerns.
+ * It applies shared behavior before requests reach application controllers.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @RequiredArgsConstructor
 public class HttpServerObservabilityFilter extends OncePerRequestFilter {
 

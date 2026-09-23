@@ -2,7 +2,11 @@ package ir.jetvam.common.exception;
 
 import java.util.Map;
 
-/** Base type for expected rule or use-case failures. */
+/** Base type for expected rule or use-case failures.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public class BusinessException extends JetvamException {
 
     public BusinessException(ErrorCode errorCode, String message) {

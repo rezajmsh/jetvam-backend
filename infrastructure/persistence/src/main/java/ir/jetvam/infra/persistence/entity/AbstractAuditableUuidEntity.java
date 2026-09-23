@@ -8,6 +8,14 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.Instant;
 
+/**
+ * Adds automatic creation and modification timestamps to UUID entities.
+ * Hibernate maintains audit fields consistently for persisted records.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @MappedSuperclass
 @Getter
 public abstract class AbstractAuditableUuidEntity extends AbstractUuidEntity {

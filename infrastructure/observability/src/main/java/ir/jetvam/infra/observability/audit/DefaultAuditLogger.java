@@ -13,6 +13,14 @@ import org.slf4j.LoggerFactory;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+/**
+ * Publishes audit events as structured OpenTelemetry-compatible logs.
+ * It also records configurable audit outcome metrics.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @RequiredArgsConstructor
 public class DefaultAuditLogger implements AuditLogger {
 

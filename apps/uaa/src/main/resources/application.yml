@@ -1,6 +1,10 @@
 spring:
   application:
     name: jetvam-uaa
+  security:
+    oauth2:
+      authorizationserver:
+        issuer: ${JETVAM_UAA_ISSUER:http://localhost:8081}
   threads:
     virtual:
       enabled: true
@@ -18,6 +22,7 @@ logging:
   level:
     jetvam.http.server: ${JETVAM_HTTP_LOG_LEVEL:INFO}
     jetvam.http.client: ${JETVAM_HTTP_LOG_LEVEL:INFO}
+    jetvam.notification.delivery: ${JETVAM_NOTIFICATION_LOG_LEVEL:INFO}
     jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
     jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
 
@@ -40,6 +45,75 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
+  security:
+    resource-server:
+      enabled: false
+    authorization-server:
+      enabled: true
+  uaa:
+    providers:
+      shahkar:
+        enabled: ${JETVAM_SHAHKAR_PROVIDER_ENABLED:false}
+        base-url: ${JETVAM_SHAHKAR_PROVIDER_BASE_URL:}
+        path: ${JETVAM_SHAHKAR_PROVIDER_PATH:/v1/identity/shahkar}
+        api-key-header: ${JETVAM_SHAHKAR_PROVIDER_API_KEY_HEADER:X-Api-Key}
+        api-key: ${JETVAM_SHAHKAR_PROVIDER_API_KEY:}
+    signing-key:
+      key-store-location: ${JETVAM_JWT_KEYSTORE_LOCATION:}
+      key-store-type: ${JETVAM_JWT_KEYSTORE_TYPE:PKCS12}
+      key-store-password: ${JETVAM_JWT_KEYSTORE_PASSWORD:}
+      key-alias: ${JETVAM_JWT_KEY_ALIAS:jetvam-uaa}
+      key-password: ${JETVAM_JWT_KEY_PASSWORD:}
+      allow-ephemeral: ${JETVAM_JWT_ALLOW_EPHEMERAL:true}
+    bootstrap-admin:
+      enabled: ${JETVAM_BOOTSTRAP_ADMIN_ENABLED:false}
+      username: ${JETVAM_BOOTSTRAP_ADMIN_USERNAME:}
+      mobile: ${JETVAM_BOOTSTRAP_ADMIN_MOBILE:}
+      national-code: ${JETVAM_BOOTSTRAP_ADMIN_NATIONAL_CODE:}
+      first-name: ${JETVAM_BOOTSTRAP_ADMIN_FIRST_NAME:}
+      last-name: ${JETVAM_BOOTSTRAP_ADMIN_LAST_NAME:}
+      password: ${JETVAM_BOOTSTRAP_ADMIN_PASSWORD:}
+  identity:
+    security:
+      otp:
+        code-length: ${JETVAM_OTP_CODE_LENGTH:6}
+        time-to-live: ${JETVAM_OTP_TTL:2m}
+        resend-interval: ${JETVAM_OTP_RESEND_INTERVAL:60s}
+        rate-limit-window: ${JETVAM_OTP_RATE_LIMIT_WINDOW:1h}
+        max-attempts: ${JETVAM_OTP_MAX_ATTEMPTS:5}
+        max-challenges-per-window: ${JETVAM_OTP_MAX_CHALLENGES_PER_WINDOW:5}
+        hmac-secret: ${JETVAM_OTP_HMAC_SECRET:}
+  http-client:
+    connect-timeout: ${JETVAM_HTTP_CONNECT_TIMEOUT:3s}
+    read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}
+    clients:
+      shahkar:
+        connect-timeout: ${JETVAM_SHAHKAR_PROVIDER_CONNECT_TIMEOUT:3s}
+        read-timeout: ${JETVAM_SHAHKAR_PROVIDER_READ_TIMEOUT:5s}
+      notification-sms:
+        connect-timeout: ${JETVAM_SMS_PROVIDER_CONNECT_TIMEOUT:3s}
+        read-timeout: ${JETVAM_SMS_PROVIDER_READ_TIMEOUT:5s}
+  notification:
+    outbox:
+      encryption-key-base64: ${JETVAM_NOTIFICATION_ENCRYPTION_KEY_BASE64:}
+      max-attempts: ${JETVAM_NOTIFICATION_MAX_ATTEMPTS:5}
+      initial-retry-delay: ${JETVAM_NOTIFICATION_INITIAL_RETRY_DELAY:2s}
+      maximum-retry-delay: ${JETVAM_NOTIFICATION_MAX_RETRY_DELAY:1m}
+      lease-duration: ${JETVAM_NOTIFICATION_LEASE_DURATION:30s}
+    dispatcher:
+      enabled: ${JETVAM_NOTIFICATION_DISPATCHER_ENABLED:false}
+      fixed-delay: ${JETVAM_NOTIFICATION_POLL_DELAY:1s}
+      batch-size: ${JETVAM_NOTIFICATION_BATCH_SIZE:25}
+    sms:
+      enabled: ${JETVAM_SMS_PROVIDER_ENABLED:false}
+      base-url: ${JETVAM_SMS_PROVIDER_BASE_URL:}
+      path: ${JETVAM_SMS_PROVIDER_PATH:/v1/messages}
+      api-key-header: ${JETVAM_SMS_PROVIDER_API_KEY_HEADER:X-Api-Key}
+      api-key: ${JETVAM_SMS_PROVIDER_API_KEY:}
+    observability:
+      enabled: ${JETVAM_NOTIFICATION_OBSERVABILITY_ENABLED:true}
+      logging-enabled: ${JETVAM_NOTIFICATION_LOGGING_ENABLED:true}
+      metrics-enabled: ${JETVAM_NOTIFICATION_METRICS_ENABLED:true}
   observability:
     enabled: true
     logging:
@@ -68,6 +142,12 @@ jetvam:
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
+    jdbc:
+      enabled: true
+      logging-enabled: true
+      metrics-enabled: true
+      tracing-enabled: true
+      slow-threshold: ${JETVAM_JDBC_SLOW_THRESHOLD:500ms}
     audit:
       enabled: true
       metrics-enabled: true

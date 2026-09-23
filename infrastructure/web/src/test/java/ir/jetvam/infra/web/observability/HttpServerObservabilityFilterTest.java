@@ -14,6 +14,14 @@ import org.springframework.web.servlet.HandlerMapping;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Verifies the behavior of http server observability filter.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class HttpServerObservabilityFilterTest {
 
     @Test

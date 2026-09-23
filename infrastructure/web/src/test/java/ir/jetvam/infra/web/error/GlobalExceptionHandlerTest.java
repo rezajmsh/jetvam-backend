@@ -20,6 +20,14 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Verifies the behavior of global exception handler.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class GlobalExceptionHandlerTest {
 
     @Test

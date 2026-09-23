@@ -11,7 +11,11 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
-/** Boundary around the Persian calendar implementation used by the project. */
+/** Boundary around the Persian calendar implementation used by the project.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public final class PersianDateUtils {
 
     public static final DateTimeFormatter SLASH_FORMATTER = DateTimeFormatter.ofPattern("yyyy/MM/dd");

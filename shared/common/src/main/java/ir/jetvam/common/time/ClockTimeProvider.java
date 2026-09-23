@@ -3,7 +3,11 @@ package ir.jetvam.common.time;
 import java.time.Clock;
 import java.util.Objects;
 
-/** Default framework-neutral {@link TimeProvider} backed by a Java clock. */
+/** Default framework-neutral {@link TimeProvider} backed by a Java clock.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public final class ClockTimeProvider implements TimeProvider {
 
     private final Clock clock;

@@ -39,6 +39,14 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Handles global exception handler concerns at the shared web boundary.
+ * It keeps API behavior consistent across all application controllers.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @RestControllerAdvice
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {

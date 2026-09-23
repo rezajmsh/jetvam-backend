@@ -9,6 +9,14 @@ import java.time.Duration;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+/**
+ * Binds external settings for the jetvam cache infrastructure.
+ * Typed defaults and validation keep application configuration consistent.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @ConfigurationProperties("jetvam.cache")
 @Getter
 @Setter
@@ -21,6 +29,13 @@ public class JetvamCacheProperties {
     private final Local local = new Local();
     private final Redis redis = new Redis();
 
+    /**
+     * Configures bounded in-process cache size, expiry and statistics.
+     * These settings are used when the local provider is selected.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     @Getter
     @Setter
     public static class Local {
@@ -31,6 +46,13 @@ public class JetvamCacheProperties {
 
     }
 
+    /**
+     * Configures Redis connectivity, key namespacing and entry lifetime.
+     * Remote cache behavior remains transparent to cache consumers.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     @Getter
     @Setter
     public static class Redis {

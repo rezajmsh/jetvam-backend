@@ -14,6 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * Verifies the behavior of date time utils.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class DateTimeUtilsTest {
 
     @Test

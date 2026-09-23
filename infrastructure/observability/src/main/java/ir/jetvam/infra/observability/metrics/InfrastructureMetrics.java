@@ -8,6 +8,14 @@ import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.Duration;
 
+/**
+ * Records HTTP, repository and audit metrics with bounded dimensions.
+ * Feature flags control metric families independently.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @RequiredArgsConstructor
 public class InfrastructureMetrics {
 

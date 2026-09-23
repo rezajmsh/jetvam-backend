@@ -5,11 +5,15 @@
     <artifactId>jetvam-uaa-app</artifactId><name>Jetvam :: App :: UAA</name>
     <dependencies>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-web</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-security</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-authorization-server</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-persistence</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-cache</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-i18n</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-observability</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-http-client</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-identity</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-notification</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
         <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>

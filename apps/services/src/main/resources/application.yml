@@ -1,6 +1,11 @@
 spring:
   application:
     name: jetvam-services
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JETVAM_UAA_ISSUER:http://localhost:8081}
   threads:
     virtual:
       enabled: true
@@ -40,6 +45,10 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
+  security:
+    resource-server:
+      enabled: true
+      public-paths: [/actuator/health/**, /actuator/info, /v3/api-docs/**, /swagger-ui/**]
   observability:
     enabled: true
     logging:
@@ -70,6 +79,12 @@ jetvam:
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
+    jdbc:
+      enabled: true
+      logging-enabled: true
+      metrics-enabled: true
+      tracing-enabled: true
+      slow-threshold: ${JETVAM_JDBC_SLOW_THRESHOLD:500ms}
     audit:
       enabled: true
       metrics-enabled: true
@@ -126,7 +141,6 @@ jetvam:
   i18n:
     enabled: true
     default-locale: fa-IR
-    table-name: i18n_message
     cache-name: i18n-messages
     fallback-to-language: true
     fallback-to-default-locale: true

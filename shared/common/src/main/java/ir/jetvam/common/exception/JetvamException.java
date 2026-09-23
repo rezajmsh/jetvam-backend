@@ -9,6 +9,9 @@ import java.util.Objects;
  *
  * <p>The exception deliberately has no HTTP concern. Web adapters are responsible
  * for mapping an error code and exception subtype to a transport status.</p>
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
  */
 public abstract class JetvamException extends RuntimeException {
 

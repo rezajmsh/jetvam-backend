@@ -4,7 +4,11 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
-/** Inclusive local-date range. */
+/** Inclusive local-date range.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public record DateRange(LocalDate startInclusive, LocalDate endInclusive) {
 
     public DateRange {

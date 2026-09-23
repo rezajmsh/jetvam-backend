@@ -2,6 +2,14 @@ package ir.jetvam.common.text;
 
 import java.util.regex.Pattern;
 
+/**
+ * Provides null-safe text normalization and presence operations.
+ * Common conversion and validation code reuses these rules.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 public final class TextUtils {
 
     private static final Pattern WHITESPACE = Pattern.compile("\\s+");

@@ -5,6 +5,14 @@ import ir.jetvam.common.exception.FieldViolation;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Carries a machine-readable API error with validation and diagnostic details.
+ * The structure is shared by controller and security failures.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 public record ApiError(
         String code,
         String message,

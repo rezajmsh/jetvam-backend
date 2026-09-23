@@ -6,6 +6,14 @@ import org.springframework.cache.caffeine.CaffeineCacheManager;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+/**
+ * Verifies the behavior of spring jetvam cache.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class SpringJetvamCacheTest {
 
     @Test

@@ -13,6 +13,14 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Verifies the behavior of jetvam core auto configuration.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class JetvamCoreAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
@@ -35,6 +43,13 @@ class JetvamCoreAutoConfigurationTest {
                 .run(context -> assertThat(context.getBean(TimeProvider.class).now()).isEqualTo(expected));
     }
 
+    /**
+     * Supplies a deterministic clock for auto-configuration tests.
+     * It verifies that application beans override infrastructure defaults.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     @Configuration(proxyBeanMethods = false)
     static class FixedClockConfiguration {
 

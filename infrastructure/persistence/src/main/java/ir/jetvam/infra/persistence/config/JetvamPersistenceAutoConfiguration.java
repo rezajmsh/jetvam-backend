@@ -15,6 +15,7 @@ import org.springframework.boot.flyway.autoconfigure.FlywayMigrationStrategy;
 import org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration;
 import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCustomizer;
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.util.StringUtils;
 
@@ -22,10 +23,19 @@ import javax.sql.DataSource;
 import java.util.Map;
 import java.util.Properties;
 
+/**
+ * Auto-configures the jetvam persistence infrastructure.
+ * Applications activate reusable beans through classpath and property conditions.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @AutoConfiguration(before = {DataSourceAutoConfiguration.class, FlywayAutoConfiguration.class})
 @ConditionalOnClass({DataSource.class, HikariDataSource.class})
 @ConditionalOnProperty(prefix = "jetvam.persist", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(JetvamPersistenceProperties.class)
+@EntityScan(basePackages = "ir.jetvam")
 public class JetvamPersistenceAutoConfiguration {
 
     @Bean(destroyMethod = "close")

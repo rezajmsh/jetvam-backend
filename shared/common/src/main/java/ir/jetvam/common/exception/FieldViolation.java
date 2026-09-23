@@ -2,7 +2,11 @@ package ir.jetvam.common.exception;
 
 import java.util.Objects;
 
-/** Rejected values are intentionally excluded to avoid leaking sensitive data. */
+/** Rejected values are intentionally excluded to avoid leaking sensitive data.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public record FieldViolation(String field, String code, String message) {
 
     public FieldViolation {

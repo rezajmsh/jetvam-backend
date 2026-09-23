@@ -6,13 +6,20 @@ import ir.jetvam.infra.web.api.ApiResponseFactory;
 import ir.jetvam.infra.web.api.JetvamResponseBodyAdvice;
 import ir.jetvam.infra.web.error.ExceptionHttpStatusMapper;
 import ir.jetvam.infra.web.error.GlobalExceptionHandler;
-import ir.jetvam.infra.web.observability.HttpClientObservabilityInterceptor;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Verifies the behavior of jetvam web auto configuration.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 
 class JetvamWebAutoConfigurationTest {
 
@@ -41,7 +48,6 @@ class JetvamWebAutoConfigurationTest {
                 .run(context -> {
                     assertThat(context).hasSingleBean(ApiResponseFactory.class);
                     assertThat(context).hasSingleBean(GlobalExceptionHandler.class);
-                    assertThat(context).doesNotHaveBean(HttpClientObservabilityInterceptor.class);
                     assertThat(context).doesNotHaveBean(FilterRegistrationBean.class);
                 });
     }

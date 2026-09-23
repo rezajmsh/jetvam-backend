@@ -6,6 +6,14 @@ import lombok.Getter;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Carries an immutable security or business audit event.
+ * Structured attributes support trace correlation and compliance storage.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @Getter
 public final class AuditEvent {
 

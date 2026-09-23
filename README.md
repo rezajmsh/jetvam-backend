@@ -18,7 +18,10 @@ apps -> infrastructure -> shared/common
 infrastructure -X-> business modules
 ```
 
-`apps` فقط محل assemble کردن ماژول‌ها و تنظیمات runtime است. منطق کسب‌وکار باید در `modules` بماند. ماژول‌های infrastructure که نیاز به راه‌اندازی خودکار دارند، در گام پیاده‌سازی با Spring Boot auto-configuration و property prefixهای `jetvam.*` عرضه می‌شوند.
+`apps` محل composition و قابلیت‌های اختصاصی هر runtime است؛ زیرساخت مدیریت job که فقط توسط
+`jetvam-jobs-app` استفاده می‌شود نیز در همان app قرار دارد. منطق کسب‌وکار همچنان باید در `modules`
+بماند. زیرساخت‌های مشترک چند runtime از طریق ماژول‌های `infrastructure` و property prefixهای
+`jetvam.*` عرضه می‌شوند.
 
 ## Infrastructure modules
 
@@ -36,8 +39,7 @@ infrastructure -X-> business modules
 
 ## Business modules
 
-- `identity`: login، OTP، token، user و role
-- `cif`: پروفایل مشتری/سازمان و اطلاعات پایه KYC
+- `identity`: Party، پروفایل مشتری، account، role، OTP و احراز هویت
 - `product`: طرح تسهیلاتی عمومی/سازمانی، audience و policyهای هر طرح
 - `origination`: درخواست تسهیلات، مراحل و ادامه درخواست نیمه‌تمام
 - `assessment`: شاهکار، اعتبارسنجی و قواعد احراز
@@ -49,6 +51,10 @@ infrastructure -X-> business modules
 - `transaction`: دریافت و تطبیق تراکنش providerها
 - `settlement`: محاسبه و اجرای تسویه پذیرنده
 - `notification`: پیامک و اعلان‌های فرایندی
+
+در ماژول identity، `PartyEntity` ریشه abstract با استراتژی JPA `JOINED` است و
+`IndividualPartyEntity` و `OrganizationPartyEntity` subtypeهای آن هستند. ستون `party_type`
+نقش discriminator را دارد. `CustomerProfileEntity` و `UserAccountEntity` subtype نیستند و به Party متصل می‌شوند.
 
 ## Build
 
@@ -63,3 +69,41 @@ Versions are centralized in the root `pom.xml`. The current baseline is Spring B
 Lombok در parent پروژه تعریف شده و در تمام ماژول‌ها در دسترس است. تنظیمات مشترک آن در
 `lombok.config` قرار دارد؛ برای property/data classها از annotationهای محدود مانند `@Getter` و
 `@Setter` استفاده شود و از `@Data` روی entityهای JPA خودداری شود.
+
+## Customer registration and login
+
+ثبت‌نام مشتری و مدیریت کاربران دو use case مستقل هستند:
+
+1. `POST /api/v1/customer/registrations/otp` با `mobile` و `nationalCode`
+2. `POST /api/v1/customer/registrations/verify` با `challengeId` و `otp`
+3. `PATCH /api/v1/customer/profile` برای تکمیل نام، نام خانوادگی و تاریخ تولد توسط مشتری لاگین‌شده
+
+در مرحله دوم، شاهکار کنترل و یک account از نوع `OTP` و بدون username/password ساخته می‌شود. برای
+ورود، ابتدا `POST /api/v1/customer/auth/otp` فراخوانی و سپس کد در token endpoint استاندارد exchange می‌شود:
+
+```text
+POST /oauth2/token
+grant_type=urn:jetvam:params:oauth:grant-type:otp
+client_id=jetvam-portal
+challenge_id=<uuid>
+otp=<code>
+scope=jetvam.api offline_access
+```
+
+کاربران سیستمی و پذیرنده account از نوع `PASSWORD` دارند. مسیر مدیریتی
+`POST /api/v1/users/parties/{partyId}/accounts` نیز برای ساخت account جدید روی Party موجود فراهم است.
+تفکیک primary authentication method اجازه می‌دهد MFA بعداً به‌عنوان عامل دوم، بدون تغییر مدل Party، اضافه شود.
+
+در محیط runtime باید `JETVAM_OTP_HMAC_SECRET` با حداقل ۳۲ کاراکتر و تنظیمات endpointهای
+`JETVAM_OTP_PROVIDER_*` و `JETVAM_SHAHKAR_PROVIDER_*` از secret/configuration خارجی تأمین شوند؛
+providerها به‌صورت پیش‌فرض fail-closed هستند.
+
+## Job management
+
+اپ `jetvam-jobs-app` مالک اجرای workloadهای پس‌زمینه است و API مدیریتی
+`/api/v1/jobs` را روی پورت پیش‌فرض `8082` ارائه می‌کند. تعریف‌ها در `job_definition` و تمام اجراهای
+زمان‌بندی‌شده و دستی در `job_execution` ثبت می‌شوند. Handler هر job در composition root اپ Jobs قرار
+می‌گیرد و فقط سرویس ماژول بیزینسی متولی را فراخوانی می‌کند. job اولیه‌ی `notification-dispatch` نیز
+از همین مسیر `NotificationDeliveryService` ماژول Notification را اجرا می‌کند. زیرساخت Quartz، مدل
+مدیریت job و تاریخچه نیز به دلیل اختصاصی بودن به همین runtime داخل `jetvam-jobs-app` نگهداری می‌شوند.
+هر execution تعداد کل آیتم‌های پردازش‌شده، موفق و خطادار را به‌صورت مستقل ثبت می‌کند.

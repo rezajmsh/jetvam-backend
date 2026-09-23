@@ -4,9 +4,10 @@ import ir.jetvam.infra.cache.JetvamCache;
 import ir.jetvam.infra.cache.config.JetvamCacheAutoConfiguration;
 import ir.jetvam.infra.i18n.DatabaseMessageResolver;
 import ir.jetvam.infra.i18n.DatabaseMessageSource;
-import ir.jetvam.infra.i18n.JdbcMessageRepository;
 import ir.jetvam.infra.i18n.MessageRepository;
 import ir.jetvam.infra.i18n.MessageResolver;
+import ir.jetvam.infra.i18n.persistence.I18nMessageJpaRepository;
+import ir.jetvam.infra.i18n.persistence.JpaMessageRepository;
 import ir.jetvam.infra.persistence.config.JetvamPersistenceAutoConfiguration;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -18,21 +19,27 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.support.AbstractApplicationContext;
 
-import javax.sql.DataSource;
+/**
+ * Auto-configures the jetvam i18n infrastructure.
+ * Applications activate reusable beans through classpath and property conditions.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 
 @AutoConfiguration(
         after = {JetvamPersistenceAutoConfiguration.class, JetvamCacheAutoConfiguration.class},
         before = MessageSourceAutoConfiguration.class
 )
 @ConditionalOnProperty(prefix = "jetvam.i18n", name = "enabled", havingValue = "true", matchIfMissing = true)
-@ConditionalOnBean({DataSource.class, JetvamCache.class})
+@ConditionalOnBean({I18nMessageJpaRepository.class, JetvamCache.class})
 @EnableConfigurationProperties(JetvamI18nProperties.class)
 public class JetvamI18nAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(MessageRepository.class)
-    public MessageRepository jetvamMessageRepository(DataSource dataSource, JetvamI18nProperties properties) {
-        return new JdbcMessageRepository(dataSource, properties.getTableName());
+    public MessageRepository jetvamMessageRepository(I18nMessageJpaRepository repository) {
+        return new JpaMessageRepository(repository);
     }
 
     @Bean

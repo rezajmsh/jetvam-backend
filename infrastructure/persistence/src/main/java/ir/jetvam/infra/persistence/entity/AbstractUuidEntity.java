@@ -12,6 +12,14 @@ import lombok.Setter;
 
 import java.util.UUID;
 
+/**
+ * Provides UUID identity and optimistic locking for persistent entities.
+ * Domain entities inherit a consistent persistence foundation.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @MappedSuperclass
 @Getter
 public abstract class AbstractUuidEntity {

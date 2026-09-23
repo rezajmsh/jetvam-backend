@@ -31,6 +31,14 @@ import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 
+/**
+ * Auto-configures the jetvam cache infrastructure.
+ * Applications activate reusable beans through classpath and property conditions.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @AutoConfiguration(before = CacheAutoConfiguration.class)
 @EnableCaching
 @ConditionalOnProperty(prefix = "jetvam.cache", name = "enabled", havingValue = "true", matchIfMissing = true)

@@ -8,6 +8,7 @@ import ir.jetvam.infra.observability.audit.DefaultAuditLogger;
 import ir.jetvam.infra.observability.logging.OtelEventLogger;
 import ir.jetvam.infra.observability.metrics.InfrastructureMetrics;
 import ir.jetvam.infra.observability.repository.RepositoryObservabilityAspect;
+import ir.jetvam.infra.observability.repository.JdbcOperationsObservabilityAspect;
 import ir.jetvam.infra.observability.trace.MicrometerTraceContextProvider;
 import ir.jetvam.infra.observability.trace.TraceContextProvider;
 import org.slf4j.ILoggerFactory;
@@ -22,6 +23,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.core.env.Environment;
+
+/**
+ * Auto-configures the jetvam observability infrastructure.
+ * Applications activate reusable beans through classpath and property conditions.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 
 @AutoConfiguration
 @EnableAspectJAutoProxy(proxyTargetClass = true)
@@ -73,6 +82,28 @@ public class JetvamObservabilityAutoConfiguration {
             JetvamObservabilityProperties properties
     ) {
         return new RepositoryObservabilityAspect(
+                tracer.getIfAvailable(() -> Tracer.NOOP),
+                metrics,
+                eventLogger,
+                properties
+        );
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.jdbc.core.JdbcOperations")
+    @ConditionalOnProperty(
+            prefix = "jetvam.observability.jdbc",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true
+    )
+    JdbcOperationsObservabilityAspect jetvamJdbcOperationsObservabilityAspect(
+            ObjectProvider<Tracer> tracer,
+            InfrastructureMetrics metrics,
+            OtelEventLogger eventLogger,
+            JetvamObservabilityProperties properties
+    ) {
+        return new JdbcOperationsObservabilityAspect(
                 tracer.getIfAvailable(() -> Tracer.NOOP),
                 metrics,
                 eventLogger,

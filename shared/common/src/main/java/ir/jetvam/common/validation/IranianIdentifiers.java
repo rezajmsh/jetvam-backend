@@ -6,7 +6,11 @@ import ir.jetvam.common.text.TextUtils;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-/** Pure validation and canonicalization for frequently used Iranian identifiers. */
+/** Pure validation and canonicalization for frequently used Iranian identifiers.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public final class IranianIdentifiers {
 
     private static final Pattern MOBILE_PATTERN = Pattern.compile("09\\d{9}");

@@ -15,6 +15,14 @@ import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
+/**
+ * Handles jetvam response body advice concerns at the shared web boundary.
+ * It keeps API behavior consistent across all application controllers.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @RestControllerAdvice
 @RequiredArgsConstructor
 public class JetvamResponseBodyAdvice implements ResponseBodyAdvice<Object> {

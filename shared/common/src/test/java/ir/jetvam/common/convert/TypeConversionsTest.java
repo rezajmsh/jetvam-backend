@@ -15,8 +15,23 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+/**
+ * Verifies the behavior of type conversions.
+ * The tests protect the shared contract and its important edge cases.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 class TypeConversionsTest {
 
+    /**
+     * Supplies representative enum values for conversion scenarios.
+     * The values verify name normalization and lookup behavior.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     private enum RequestStatus {
         IN_PROGRESS,
         COMPLETED

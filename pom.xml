@@ -55,12 +55,22 @@
             </dependency>
             <dependency>
                 <groupId>ir.jetvam</groupId>
+                <artifactId>jetvam-infra-http-client</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ir.jetvam</groupId>
                 <artifactId>jetvam-infra-observability</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>ir.jetvam</groupId>
                 <artifactId>jetvam-infra-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ir.jetvam</groupId>
+                <artifactId>jetvam-infra-authorization-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -80,17 +90,7 @@
             </dependency>
             <dependency>
                 <groupId>ir.jetvam</groupId>
-                <artifactId>jetvam-infra-jobs</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>ir.jetvam</groupId>
                 <artifactId>jetvam-module-identity</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>ir.jetvam</groupId>
-                <artifactId>jetvam-module-cif</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

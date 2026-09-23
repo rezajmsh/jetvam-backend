@@ -14,11 +14,12 @@
     <modules>
         <module>core</module>
         <module>observability</module>
+        <module>http-client</module>
         <module>web</module>
         <module>security</module>
+        <module>authorization-server</module>
         <module>persistence</module>
         <module>cache</module>
         <module>i18n</module>
-        <module>jobs</module>
     </modules>
 </project>

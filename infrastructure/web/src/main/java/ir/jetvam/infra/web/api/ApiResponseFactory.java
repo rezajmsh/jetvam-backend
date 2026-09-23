@@ -6,6 +6,14 @@ import ir.jetvam.infra.web.request.WebRequestAttributes;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Creates common API envelopes using centralized time and trace context.
+ * It keeps response metadata consistent across controllers and handlers.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @RequiredArgsConstructor
 public class ApiResponseFactory {
 

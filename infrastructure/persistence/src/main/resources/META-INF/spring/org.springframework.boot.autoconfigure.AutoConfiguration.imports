@@ -1,1 +1,2 @@
 ir.jetvam.infra.persistence.config.JetvamPersistenceAutoConfiguration
+ir.jetvam.infra.persistence.config.JetvamJpaRepositoriesAutoConfiguration

@@ -10,7 +10,6 @@
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-cache</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-i18n</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-observability</artifactId></dependency>
-        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-cif</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-product</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-origination</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-assessment</artifactId></dependency>

@@ -5,6 +5,14 @@ import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 
+/**
+ * Reads active trace identifiers from Micrometer Tracing.
+ * It adapts framework tracing to the common trace-context contract.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @RequiredArgsConstructor
 public class MicrometerTraceContextProvider implements TraceContextProvider {
 

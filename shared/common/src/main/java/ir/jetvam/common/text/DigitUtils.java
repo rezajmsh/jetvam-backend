@@ -1,5 +1,13 @@
 package ir.jetvam.common.text;
 
+/**
+ * Normalizes Persian, Arabic and English decimal digits.
+ * Identifier and date parsers reuse these locale-safe conversions.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 public final class DigitUtils {
 
     private static final char[] PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹".toCharArray();

@@ -6,6 +6,14 @@ import org.springframework.cache.CacheManager;
 
 import java.util.Optional;
 
+/**
+ * Adapts Spring Cache operations to the provider-neutral Jetvam contract.
+ * It centralizes lookup, write and invalidation behavior.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 public final class SpringJetvamCache implements JetvamCache {
 
     private final CacheManager cacheManager;

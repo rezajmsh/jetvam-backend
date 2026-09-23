@@ -6,6 +6,14 @@ import org.springframework.context.support.AbstractMessageSource;
 import java.text.MessageFormat;
 import java.util.Locale;
 
+/**
+ * Integrates the database message resolver with Spring MessageSource.
+ * Framework validation and manual lookups share the same translations.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 public final class DatabaseMessageSource extends AbstractMessageSource {
 
     private final MessageResolver resolver;

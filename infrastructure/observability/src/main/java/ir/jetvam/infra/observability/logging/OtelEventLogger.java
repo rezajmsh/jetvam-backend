@@ -6,7 +6,11 @@ import org.slf4j.event.Level;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Emits SLF4J key/value events that are preserved by the OTel JSON formatter. */
+/** Emits SLF4J key/value events that are preserved by the OTel JSON formatter.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public class OtelEventLogger {
 
     public void log(

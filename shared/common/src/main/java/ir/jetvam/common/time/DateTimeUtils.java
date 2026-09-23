@@ -13,6 +13,14 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
+/**
+ * Provides conversion and calculation helpers for Java date-time types.
+ * Current values use the centralized Jetvam UTC clock and Tehran zone.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 public final class DateTimeUtils {
 
     public static final ZoneId TEHRAN_ZONE = ZoneId.of("Asia/Tehran");

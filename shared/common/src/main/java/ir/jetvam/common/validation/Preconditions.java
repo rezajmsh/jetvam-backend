@@ -5,6 +5,9 @@ import ir.jetvam.common.text.TextUtils;
 /**
  * Fail-fast guards for programming, configuration and infrastructure invariants.
  * Domain-input validation should use {@link ValidationCollector} instead.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
  */
 public final class Preconditions {
 

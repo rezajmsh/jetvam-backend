@@ -1,22 +1,43 @@
 spring:
   application:
     name: jetvam-jobs
-  main:
-    web-application-type: none
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JETVAM_UAA_ISSUER:http://localhost:8081}
   threads:
     virtual:
       enabled: true
-  batch:
-    job:
-      enabled: false
   jpa:
     open-in-view: false
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    overwrite-existing-jobs: false
+    wait-for-jobs-to-complete-on-shutdown: true
+    properties:
+      org.quartz.scheduler.instanceName: jetvam-jobs
+      org.quartz.scheduler.instanceId: AUTO
+      org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
+      org.quartz.jobStore.tablePrefix: QRTZ_
+      org.quartz.jobStore.isClustered: true
+      org.quartz.jobStore.clusterCheckinInterval: 10000
+      org.quartz.jobStore.useProperties: true
+      org.quartz.threadPool.threadCount: ${JETVAM_JOBS_THREAD_COUNT:10}
+
+server:
+  port: ${JETVAM_JOBS_PORT:8082}
+  shutdown: graceful
 
 logging:
   structured:
     format:
       console: ${JETVAM_STRUCTURED_LOG_FORMAT:ir.jetvam.infra.observability.logging.OtelStructuredLogFormatter}
   level:
+    jetvam.http.client: ${JETVAM_HTTP_LOG_LEVEL:INFO}
+    jetvam.notification.delivery: ${JETVAM_NOTIFICATION_LOG_LEVEL:INFO}
     jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
     jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
 
@@ -35,6 +56,10 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
+  security:
+    resource-server:
+      enabled: true
+      public-paths: [/actuator/health/**, /actuator/info]
   observability:
     enabled: true
     logging:
@@ -44,12 +69,23 @@ jetvam:
       enabled: true
     metrics:
       enabled: true
+    http:
+      client:
+        enabled: true
+        logging-enabled: true
+        metrics-enabled: true
     repository:
       enabled: true
       logging-enabled: true
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
+    jdbc:
+      enabled: true
+      logging-enabled: true
+      metrics-enabled: true
+      tracing-enabled: true
+      slow-threshold: ${JETVAM_JDBC_SLOW_THRESHOLD:500ms}
     audit:
       enabled: true
       metrics-enabled: true
@@ -76,8 +112,9 @@ jetvam:
       jdbc-time-zone: UTC
       jdbc-batch-size: 100
     migration:
-      enabled: false
+      enabled: ${JETVAM_DB_MIGRATION_ENABLED:true}
       locations: classpath:db/migration
+      validate-on-migrate: true
   cache:
     enabled: true
     provider: ${JETVAM_CACHE_PROVIDER:local}
@@ -100,3 +137,31 @@ jetvam:
     cache-name: i18n-messages
   jobs:
     enabled: true
+  http-client:
+    connect-timeout: ${JETVAM_HTTP_CONNECT_TIMEOUT:3s}
+    read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}
+    clients:
+      notification-sms:
+        connect-timeout: ${JETVAM_SMS_PROVIDER_CONNECT_TIMEOUT:3s}
+        read-timeout: ${JETVAM_SMS_PROVIDER_READ_TIMEOUT:5s}
+  notification:
+    outbox:
+      encryption-key-base64: ${JETVAM_NOTIFICATION_ENCRYPTION_KEY_BASE64:}
+      max-attempts: ${JETVAM_NOTIFICATION_MAX_ATTEMPTS:5}
+      initial-retry-delay: ${JETVAM_NOTIFICATION_INITIAL_RETRY_DELAY:2s}
+      maximum-retry-delay: ${JETVAM_NOTIFICATION_MAX_RETRY_DELAY:1m}
+      lease-duration: ${JETVAM_NOTIFICATION_LEASE_DURATION:30s}
+    dispatcher:
+      enabled: ${JETVAM_NOTIFICATION_DISPATCHER_ENABLED:false}
+      fixed-delay: ${JETVAM_NOTIFICATION_POLL_DELAY:1s}
+      batch-size: ${JETVAM_NOTIFICATION_BATCH_SIZE:25}
+    sms:
+      enabled: ${JETVAM_SMS_PROVIDER_ENABLED:false}
+      base-url: ${JETVAM_SMS_PROVIDER_BASE_URL:}
+      path: ${JETVAM_SMS_PROVIDER_PATH:/v1/messages}
+      api-key-header: ${JETVAM_SMS_PROVIDER_API_KEY_HEADER:X-Api-Key}
+      api-key: ${JETVAM_SMS_PROVIDER_API_KEY:}
+    observability:
+      enabled: ${JETVAM_NOTIFICATION_OBSERVABILITY_ENABLED:true}
+      logging-enabled: ${JETVAM_NOTIFICATION_LOGGING_ENABLED:true}
+      metrics-enabled: ${JETVAM_NOTIFICATION_METRICS_ENABLED:true}

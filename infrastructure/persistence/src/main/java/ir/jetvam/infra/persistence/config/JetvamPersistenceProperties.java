@@ -10,6 +10,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Binds external settings for the jetvam persistence infrastructure.
+ * Typed defaults and validation keep application configuration consistent.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @ConfigurationProperties("jetvam.persist")
 @Getter
 @Setter
@@ -40,6 +48,13 @@ public class JetvamPersistenceProperties {
         );
     }
 
+    /**
+     * Configures Hikari connection-pool capacity and lifecycle settings.
+     * Defaults provide safe PostgreSQL behavior for Jetvam applications.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     @Getter
     @Setter
     public static class Pool {
@@ -59,6 +74,13 @@ public class JetvamPersistenceProperties {
 
     }
 
+    /**
+     * Configures Hibernate schema validation, batching and SQL diagnostics.
+     * Additional provider properties can be supplied without code changes.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     @Getter
     @Setter
     public static class Jpa {
@@ -74,6 +96,13 @@ public class JetvamPersistenceProperties {
 
     }
 
+    /**
+     * Configures Flyway locations, validation and migration execution.
+     * Destructive clean operations remain disabled by infrastructure code.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     @Getter
     @Setter
     public static class Migration {

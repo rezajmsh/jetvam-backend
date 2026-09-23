@@ -4,7 +4,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
-/** Half-open instant range: start is included and end is excluded. */
+/** Half-open instant range: start is included and end is excluded.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
 public record InstantRange(Instant startInclusive, Instant endExclusive) {
 
     public InstantRange {

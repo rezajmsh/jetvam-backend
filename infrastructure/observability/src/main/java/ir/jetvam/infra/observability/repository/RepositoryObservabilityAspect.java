@@ -18,6 +18,14 @@ import org.slf4j.event.Level;
 import java.time.Duration;
 import java.util.List;
 
+/**
+ * Measures and traces Spring Data repository method executions.
+ * Slow calls and failures are logged with configurable thresholds.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
+ */
+
 @Aspect
 @RequiredArgsConstructor
 public class RepositoryObservabilityAspect {

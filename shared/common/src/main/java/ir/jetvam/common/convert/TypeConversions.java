@@ -20,6 +20,9 @@ import java.util.UUID;
 /**
  * Strict, null-preserving conversions for data received from external boundaries.
  * A {@code null} input always produces {@code null}; invalid non-null values fail fast.
+ *
+ * @author reza jamshidi
+ * @since 9/21/2026
  */
 public final class TypeConversions {
 
@@ -206,6 +209,13 @@ public final class TypeConversions {
     }
 
     @FunctionalInterface
+    /**
+     * Encapsulates one conversion operation that may fail with a runtime cause.
+     * The wrapper converts failures to the common conversion exception.
+     *
+     * @author reza jamshidi
+     * @since 9/21/2026
+     */
     private interface ConversionOperation<T> {
         T convert(Object value);
     }

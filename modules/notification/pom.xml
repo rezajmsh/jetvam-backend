@@ -5,7 +5,14 @@
     <artifactId>jetvam-module-notification</artifactId><name>Jetvam :: Module :: Notification</name>
     <dependencies>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-common</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-persistence</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-http-client</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-observability</artifactId></dependency>
         <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-configuration-processor</artifactId><optional>true</optional></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jackson</artifactId></dependency>
         <dependency><groupId>org.springframework.modulith</groupId><artifactId>spring-modulith-api</artifactId></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
     </dependencies>
 </project>
