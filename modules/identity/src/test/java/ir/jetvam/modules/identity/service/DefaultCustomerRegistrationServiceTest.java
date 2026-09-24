@@ -1,5 +1,8 @@
 package ir.jetvam.modules.identity.service;
 
+import ir.jetvam.modules.integration.shahkar.ShahkarProvider;
+import ir.jetvam.modules.integration.shahkar.ShahkarVerification;
+
 import ir.jetvam.common.time.ClockTimeProvider;
 import ir.jetvam.modules.identity.IdentityRoles;
 import ir.jetvam.modules.identity.model.AuthenticationMethod;

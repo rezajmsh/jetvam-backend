@@ -140,10 +140,6 @@ jetvam:
   http-client:
     connect-timeout: ${JETVAM_HTTP_CONNECT_TIMEOUT:3s}
     read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}
-    clients:
-      notification-sms:
-        connect-timeout: ${JETVAM_SMS_PROVIDER_CONNECT_TIMEOUT:3s}
-        read-timeout: ${JETVAM_SMS_PROVIDER_READ_TIMEOUT:5s}
   notification:
     outbox:
       encryption-key-base64: ${JETVAM_NOTIFICATION_ENCRYPTION_KEY_BASE64:}
@@ -155,12 +151,6 @@ jetvam:
       enabled: ${JETVAM_NOTIFICATION_DISPATCHER_ENABLED:false}
       fixed-delay: ${JETVAM_NOTIFICATION_POLL_DELAY:1s}
       batch-size: ${JETVAM_NOTIFICATION_BATCH_SIZE:25}
-    sms:
-      enabled: ${JETVAM_SMS_PROVIDER_ENABLED:false}
-      base-url: ${JETVAM_SMS_PROVIDER_BASE_URL:}
-      path: ${JETVAM_SMS_PROVIDER_PATH:/v1/messages}
-      api-key-header: ${JETVAM_SMS_PROVIDER_API_KEY_HEADER:X-Api-Key}
-      api-key: ${JETVAM_SMS_PROVIDER_API_KEY:}
     observability:
       enabled: ${JETVAM_NOTIFICATION_OBSERVABILITY_ENABLED:true}
       logging-enabled: ${JETVAM_NOTIFICATION_LOGGING_ENABLED:true}

@@ -11,8 +11,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
 import java.net.URI;
 import java.net.http.HttpClient;
+import java.time.Duration;
+import java.util.function.Consumer;
+import org.springframework.http.HttpHeaders;
 
 /**
  * Creates isolated, named RestClient instances with central timeouts and observability.
@@ -41,16 +46,51 @@ public class JetvamHttpClientFactory {
         Preconditions.requireText(clientName, "clientName");
         Preconditions.requireNonNull(baseUrl, "baseUrl");
         JetvamHttpClientProperties.Client settings = clientProperties.resolve(clientName);
-        HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(settings.getConnectTimeout())
-                .build();
-        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(settings.getReadTimeout());
+        return create(
+                clientName,
+                baseUrl,
+                settings.getConnectTimeout(),
+                settings.getReadTimeout(),
+                null,
+                new String[0],
+                ignored -> { }
+        );
+    }
 
+    public RestClient create(
+            String clientName,
+            URI baseUrl,
+            Duration connectTimeout,
+            Duration readTimeout,
+            SSLContext sslContext,
+            String[] enabledProtocols,
+            Consumer<HttpHeaders> defaultHeaders
+    ) {
+        Preconditions.requireText(clientName, "clientName");
+        Preconditions.requireNonNull(baseUrl, "baseUrl");
+        Preconditions.requireNonNull(connectTimeout, "connectTimeout");
+        Preconditions.requireNonNull(readTimeout, "readTimeout");
+        Preconditions.requireNonNull(enabledProtocols, "enabledProtocols");
+        Preconditions.requireNonNull(defaultHeaders, "defaultHeaders");
+        HttpClient.Builder httpClientBuilder = HttpClient.newBuilder().connectTimeout(connectTimeout);
+        if (sslContext != null) {
+            httpClientBuilder.sslContext(sslContext);
+        }
+        if (enabledProtocols.length > 0) {
+            SSLParameters sslParameters = new SSLParameters();
+            sslParameters.setProtocols(enabledProtocols.clone());
+            httpClientBuilder.sslParameters(sslParameters);
+        }
+        HttpClient httpClient = httpClientBuilder.build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(readTimeout);
+
+        JetvamHttpClientProperties.Client settings = clientProperties.resolve(clientName);
         boolean observable = observabilityProperties.isEnabled() && settings.isObservabilityEnabled();
         RestClient.Builder configured = builder.clone()
                 .baseUrl(baseUrl.toString())
                 .requestFactory(requestFactory)
+                .defaultHeaders(defaultHeaders)
                 .observationRegistry(observable ? observationRegistry : ObservationRegistry.NOOP);
         if (observable && observabilityProperties.getHttp().getClient().isEnabled()) {
             configured.requestInterceptor(new HttpClientObservabilityInterceptor(

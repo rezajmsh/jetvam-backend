@@ -1,15 +1,12 @@
 package ir.jetvam.modules.notification.config;
 
-import ir.jetvam.common.text.TextUtils;
 import ir.jetvam.common.validation.Preconditions;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
-import java.net.URI;
 import java.time.Duration;
 import java.util.Base64;
-import java.util.Set;
 
 /**
  * Fails application startup when enabled notification facilities are unsafe or incomplete.
@@ -22,15 +19,12 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class NotificationConfigurationValidator implements InitializingBean {
 
-    private static final Set<String> HTTP_SCHEMES = Set.of("http", "https");
-
     private final NotificationProperties properties;
 
     @Override
     public void afterPropertiesSet() {
         validateOutbox();
         validateDispatcher();
-        validateSms();
     }
 
     private void validateOutbox() {
@@ -52,23 +46,6 @@ public class NotificationConfigurationValidator implements InitializingBean {
         NotificationProperties.Dispatcher dispatcher = properties.getDispatcher();
         Preconditions.requirePositive(dispatcher.getBatchSize(), "jetvam.notification.dispatcher.batch-size");
         requirePositive(dispatcher.getFixedDelay(), "jetvam.notification.dispatcher.fixed-delay");
-    }
-
-    private void validateSms() {
-        NotificationProperties.Sms sms = properties.getSms();
-        if (!sms.isEnabled()) {
-            return;
-        }
-        URI baseUrl = URI.create(Preconditions.requireText(sms.getBaseUrl(), "jetvam.notification.sms.base-url"));
-        Preconditions.require(baseUrl.isAbsolute() && HTTP_SCHEMES.contains(baseUrl.getScheme().toLowerCase()),
-                "Notification SMS base URL must use http or https");
-        Preconditions.require(baseUrl.getRawUserInfo() == null && baseUrl.getRawQuery() == null
-                        && baseUrl.getRawFragment() == null,
-                "Notification SMS base URL must not contain credentials, query or fragment");
-        Preconditions.requireText(sms.getPath(), "jetvam.notification.sms.path");
-        if (TextUtils.hasText(sms.getApiKey())) {
-            Preconditions.requireText(sms.getApiKeyHeader(), "jetvam.notification.sms.api-key-header");
-        }
     }
 
     private static void validateEncryptionKey(String encodedKey) {

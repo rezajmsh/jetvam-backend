@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Verifies fail-fast checks for encryption and external SMS configuration.
+ * Verifies fail-fast checks for encryption and queue processing configuration.
  * Disabled facilities remain usable in applications that only consume module APIs.
  *
  * @author reza jamshidi
@@ -38,14 +38,4 @@ class NotificationConfigurationValidatorTest {
                 .hasMessage("Notification encryption key must contain exactly 32 bytes");
     }
 
-    @Test
-    void rejectsCredentialBearingProviderUrls() {
-        NotificationProperties properties = new NotificationProperties();
-        properties.getSms().setEnabled(true);
-        properties.getSms().setBaseUrl("https://user:secret@sms.example.test");
-
-        assertThatThrownBy(() -> new NotificationConfigurationValidator(properties).afterPropertiesSet())
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Notification SMS base URL must not contain credentials, query or fragment");
-    }
 }

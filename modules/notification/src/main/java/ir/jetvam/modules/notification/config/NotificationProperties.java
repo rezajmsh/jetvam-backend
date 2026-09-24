@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.time.Duration;
 
 /**
- * Binds queue security, retry scheduling and SMS provider settings.
- * Secrets and endpoints remain externalized for each deployment environment.
+ * Binds queue security, retry scheduling and notification observability settings.
+ * External delivery providers are owned by the independent integration module.
  *
  * @author reza jamshidi
  * @since 9/22/2026
@@ -19,7 +19,6 @@ public class NotificationProperties {
 
     private final Outbox outbox = new Outbox();
     private final Dispatcher dispatcher = new Dispatcher();
-    private final Sms sms = new Sms();
     private final Observability observability = new Observability();
 
     /**
@@ -52,23 +51,6 @@ public class NotificationProperties {
         private boolean enabled;
         private Duration fixedDelay = Duration.ofSeconds(1);
         private int batchSize = 25;
-    }
-
-    /**
-     * Describes the external SMS gateway contract and authentication header.
-     * The adapter remains disabled until a usable endpoint is explicitly configured.
-     *
-     * @author reza jamshidi
-     * @since 9/22/2026
-     */
-    @Getter
-    @Setter
-    public static class Sms {
-        private boolean enabled;
-        private String baseUrl;
-        private String path = "/v1/messages";
-        private String apiKeyHeader = "X-Api-Key";
-        private String apiKey;
     }
 
     /**

@@ -18,7 +18,6 @@ public class JetvamUaaProperties {
 
     private final BootstrapAdmin bootstrapAdmin = new BootstrapAdmin();
     private final SigningKey signingKey = new SigningKey();
-    private final Providers providers = new Providers();
 
     /**
      * Defines the optional first administrator created on an empty installation.
@@ -57,33 +56,4 @@ public class JetvamUaaProperties {
         private boolean allowEphemeral = true;
     }
 
-    /**
-     * Groups external identity-verification provider settings owned by UAA.
-     * Message delivery is configured centrally by the notification module.
-     *
-     * @author reza jamshidi
-     * @since 9/22/2026
-     */
-    @Getter
-    @Setter
-    public static class Providers {
-        private final Endpoint shahkar = new Endpoint();
-    }
-
-    /**
-     * Describes a secured HTTP provider endpoint used during customer onboarding.
-     * Secrets are supplied from deployment configuration rather than source files.
-     *
-     * @author reza jamshidi
-     * @since 9/22/2026
-     */
-    @Getter
-    @Setter
-    public static class Endpoint {
-        private boolean enabled;
-        private String baseUrl;
-        private String path;
-        private String apiKeyHeader = "X-Api-Key";
-        private String apiKey;
-    }
 }

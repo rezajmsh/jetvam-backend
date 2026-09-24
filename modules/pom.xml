@@ -25,5 +25,6 @@
         <module>transaction</module>
         <module>settlement</module>
         <module>notification</module>
+        <module>integration</module>
     </modules>
 </project>

@@ -18,6 +18,8 @@ import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.RoleRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
+import ir.jetvam.modules.integration.shahkar.ShahkarProvider;
+import ir.jetvam.modules.integration.shahkar.ShahkarVerification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

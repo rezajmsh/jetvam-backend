@@ -155,6 +155,11 @@
                 <artifactId>jetvam-module-notification</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>ir.jetvam</groupId>
+                <artifactId>jetvam-module-integration</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- Third-party dependencies -->
             <dependency>

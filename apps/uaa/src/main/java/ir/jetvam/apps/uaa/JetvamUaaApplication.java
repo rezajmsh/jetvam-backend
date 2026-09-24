@@ -15,7 +15,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
         "ir.jetvam.apps.uaa",
         "ir.jetvam.modules.identity",
         "ir.jetvam.modules.settings",
-        "ir.jetvam.modules.notification"
+        "ir.jetvam.modules.notification",
+        "ir.jetvam.modules.integration"
 })
 public class JetvamUaaApplication {
 
