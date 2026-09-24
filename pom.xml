@@ -32,7 +32,9 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-modulith.version>2.1.1</spring-modulith.version>
         <persian-date-time.version>4.2.1</persian-date-time.version>
+        <maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
+        <maven-javadoc-plugin.version>3.12.0</maven-javadoc-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -91,6 +93,11 @@
             <dependency>
                 <groupId>ir.jetvam</groupId>
                 <artifactId>jetvam-module-identity</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>ir.jetvam</groupId>
+                <artifactId>jetvam-module-settings</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -191,6 +198,52 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>${maven-antrun-plugin.version}</version>
+                <inherited>false</inherited>
+                <executions>
+                    <execution>
+                        <id>verify-main-type-javadocs</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <resourcecount property="jetvam.main.java.count">
+                                    <fileset dir="${maven.multiModuleProjectDirectory}">
+                                        <include name="**/src/main/java/**/*.java"/>
+                                    </fileset>
+                                </resourcecount>
+                                <resourcecount property="jetvam.main.java.author.count">
+                                    <fileset dir="${maven.multiModuleProjectDirectory}">
+                                        <include name="**/src/main/java/**/*.java"/>
+                                        <containsregexp expression="@author reza jamshidi"/>
+                                    </fileset>
+                                </resourcecount>
+                                <resourcecount property="jetvam.main.java.since.count">
+                                    <fileset dir="${maven.multiModuleProjectDirectory}">
+                                        <include name="**/src/main/java/**/*.java"/>
+                                        <containsregexp expression="@since [0-9]+/[0-9]+/[0-9]+"/>
+                                    </fileset>
+                                </resourcecount>
+                                <condition property="jetvam.main.java.javadocs.complete">
+                                    <and>
+                                        <equals arg1="${jetvam.main.java.count}"
+                                                arg2="${jetvam.main.java.author.count}"/>
+                                        <equals arg1="${jetvam.main.java.count}"
+                                                arg2="${jetvam.main.java.since.count}"/>
+                                    </and>
+                                </condition>
+                                <fail unless="jetvam.main.java.javadocs.complete"
+                                      message="Every main Java type must include @author reza jamshidi and @since M/d/yyyy."/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <version>${maven-enforcer-plugin.version}</version>
                 <executions>
@@ -211,6 +264,17 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven-javadoc-plugin.version}</version>
+                <configuration>
+                    <doclint>all</doclint>
+                    <encoding>${project.build.sourceEncoding}</encoding>
+                    <failOnError>true</failOnError>
+                    <show>protected</show>
+                </configuration>
             </plugin>
         </plugins>
     </build>

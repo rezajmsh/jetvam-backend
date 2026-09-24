@@ -1,6 +1,11 @@
 package ir.jetvam.apps.jobs.infrastructure.handler;
 
-/** Item-level counters and an optional non-sensitive execution summary. */
+/**
+ * Item-level counters and an optional non-sensitive execution summary.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public record JobResult(long processedCount, long succeededCount, long failedCount, String summary) {
 
     public JobResult {

@@ -10,8 +10,13 @@ package ir.jetvam.modules.identity;
 public final class IdentityRoles {
 
     public static final String CUSTOMER = "CUSTOMER";
+    public static final String MERCHANT_ADMIN = "MERCHANT_ADMIN";
+    public static final String MERCHANT_OPERATOR = "MERCHANT_OPERATOR";
     public static final String MERCHANT_USER = "MERCHANT_USER";
+    public static final String SYSTEM_ADMIN = "SYSTEM_ADMIN";
     public static final String SYSTEM_OPERATOR = "SYSTEM_OPERATOR";
+    /** @deprecated use {@link #SYSTEM_ADMIN}; retained for existing assignments. */
+    @Deprecated
     public static final String UAA_ADMIN = "UAA_ADMIN";
     public static final String SERVICE = "SERVICE";
 

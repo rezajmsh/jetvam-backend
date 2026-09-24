@@ -56,6 +56,13 @@ public class AccessTokenClaimsConfiguration {
                 context.getClaims().claim(SecurityClaims.CATEGORIES, Set.of(UserCategory.SERVICE.name()));
                 context.getClaims().claim(SecurityClaims.ROLES, Set.of(IdentityRoles.SERVICE));
             }
+            if (context.getAuthorization() != null) {
+                Object authenticationMethods = context.getAuthorization()
+                        .getAttribute(SecurityClaims.AUTHENTICATION_METHODS);
+                if (authenticationMethods != null) {
+                    context.getClaims().claim(SecurityClaims.AUTHENTICATION_METHODS, authenticationMethods);
+                }
+            }
         };
     }
 

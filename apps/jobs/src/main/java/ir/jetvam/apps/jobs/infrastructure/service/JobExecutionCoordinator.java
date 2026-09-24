@@ -11,7 +11,12 @@ import java.io.StringWriter;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Executes a resolved handler while guaranteeing terminal history updates. */
+/**
+ * Executes a resolved handler while guaranteeing terminal history updates.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @RequiredArgsConstructor
 public class JobExecutionCoordinator {
 

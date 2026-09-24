@@ -6,6 +6,12 @@ import ir.jetvam.apps.jobs.infrastructure.model.JobTriggerType;
 import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Exposes one job execution and its item-level processing counters.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public record JobExecutionView(
         UUID id,
         UUID definitionId,

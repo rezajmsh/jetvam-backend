@@ -1,6 +1,11 @@
 package ir.jetvam.modules.notification.delivery;
 
-/** Item-level outcome of one notification outbox batch. */
+/**
+ * Item-level outcome of one notification outbox batch.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public record NotificationBatchResult(int processedCount, int succeededCount, int failedCount) {
 
     public NotificationBatchResult {

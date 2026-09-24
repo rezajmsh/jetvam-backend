@@ -36,7 +36,7 @@ public class UserManagementController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('identity:user:write')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('identity:user:write')")
     public UserView create(@Valid @RequestBody CreateUserRequest request) {
         return userAccountService.create(new CreateUserCommand(
                 request.username(),
@@ -53,7 +53,7 @@ public class UserManagementController {
 
     @PostMapping("/parties/{partyId}/accounts")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('identity:user:write')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('identity:user:write')")
     public UserView createForParty(
             @PathVariable UUID partyId,
             @Valid @RequestBody CreateAccountForPartyRequest request
@@ -61,6 +61,7 @@ public class UserManagementController {
         return userAccountService.createForParty(new CreateAccountForPartyCommand(
                 partyId,
                 request.username(),
+                request.mobile(),
                 request.password(),
                 request.categories(),
                 request.roles()
@@ -68,7 +69,7 @@ public class UserManagementController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('identity:user:read')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('identity:user:read')")
     public UserView get(@PathVariable UUID id) {
         return userAccountService.get(id);
     }
@@ -80,7 +81,7 @@ public class UserManagementController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasAuthority('identity:user:write')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('identity:user:write')")
     public UserView changeStatus(
             @PathVariable UUID id,
             @Valid @RequestBody ChangeUserStatusRequest request

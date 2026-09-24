@@ -9,6 +9,7 @@
     <dependencies>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-common</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-persistence</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-settings</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-notification</artifactId></dependency>
         <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security</artifactId></dependency>

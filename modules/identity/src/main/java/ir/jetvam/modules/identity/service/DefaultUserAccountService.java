@@ -82,6 +82,7 @@ public class DefaultUserAccountService implements UserAccountService {
                 individual,
                 username,
                 passwordEncoder.encode(command.password()),
+                mobile,
                 command.categories(),
                 roles
         ));
@@ -97,11 +98,18 @@ public class DefaultUserAccountService implements UserAccountService {
         Preconditions.requireNonNull(command, "command");
         Preconditions.requireNonNull(command.partyId(), "partyId");
         String username = Preconditions.requireText(command.username(), "username").strip().toLowerCase(Locale.ROOT);
+        String mobile = IranianIdentifiers.normalizeMobileNumber(command.mobile());
         String password = Preconditions.requireText(command.password(), "password");
         Preconditions.require(password.length() >= 10, "password must contain at least 10 characters");
         Preconditions.require(!command.categories().isEmpty(), "at least one user category is required");
+        validatePasswordAccountCategories(command.categories());
+        validateBuiltInRoleAssignments(command.categories(), command.roleCodes());
+        Preconditions.require(IranianIdentifiers.isValidMobileNumber(mobile), "mobile is invalid");
         if (userRepository.existsByUsernameIgnoreCase(username)) {
             throw new ConflictException("Username already exists", Map.of("username", username));
+        }
+        if (userRepository.existsByAuthenticationMobile(mobile)) {
+            throw new ConflictException("Authentication mobile already exists", Map.of("mobile", mobile));
         }
         PartyEntity party = partyRepository.findById(command.partyId())
                 .orElseThrow(() -> new ResourceNotFoundException("party", command.partyId()));
@@ -113,6 +121,7 @@ public class DefaultUserAccountService implements UserAccountService {
                 party,
                 username,
                 passwordEncoder.encode(password),
+                mobile,
                 command.categories(),
                 roles
         ));
@@ -154,17 +163,17 @@ public class DefaultUserAccountService implements UserAccountService {
                 IranianIdentifiers.isValidNationalCode(command.nationalCode()),
                 "nationalCode is invalid"
         );
-        if (TextUtils.hasText(command.mobile())) {
-            Preconditions.require(
-                    IranianIdentifiers.isValidMobileNumber(command.mobile()),
-                    "mobile is invalid"
-            );
-        }
+        Preconditions.require(
+                IranianIdentifiers.isValidMobileNumber(command.mobile()),
+                "mobile is invalid"
+        );
         Preconditions.requireText(command.firstName(), "firstName");
         Preconditions.requireText(command.lastName(), "lastName");
         String password = Preconditions.requireText(command.password(), "password");
         Preconditions.require(password.length() >= 10, "password must contain at least 10 characters");
         Preconditions.require(!command.categories().isEmpty(), "at least one user category is required");
+        validatePasswordAccountCategories(command.categories());
+        validateBuiltInRoleAssignments(command.categories(), command.roleCodes());
     }
 
     private void rejectDuplicates(String username, String mobile, String nationalCode) {
@@ -173,6 +182,9 @@ public class DefaultUserAccountService implements UserAccountService {
         }
         if (mobile != null && individualRepository.existsByMobile(mobile)) {
             throw new ConflictException("Mobile number already exists", Map.of("mobile", mobile));
+        }
+        if (mobile != null && userRepository.existsByAuthenticationMobile(mobile)) {
+            throw new ConflictException("Authentication mobile already exists", Map.of("mobile", mobile));
         }
         if (individualRepository.existsByNationalCode(nationalCode)) {
             throw new ConflictException("National code already exists", Map.of("nationalCode", nationalCode));
@@ -187,11 +199,38 @@ public class DefaultUserAccountService implements UserAccountService {
         Set<String> roles = new LinkedHashSet<>();
         categories.forEach(category -> roles.add(switch (category) {
             case CUSTOMER -> IdentityRoles.CUSTOMER;
-            case MERCHANT -> IdentityRoles.MERCHANT_USER;
+            case MERCHANT -> IdentityRoles.MERCHANT_OPERATOR;
             case OPERATOR -> IdentityRoles.SYSTEM_OPERATOR;
             case SERVICE -> IdentityRoles.SERVICE;
         }));
         return roles;
+    }
+
+    private static void validatePasswordAccountCategories(Set<UserCategory> categories) {
+        Preconditions.require(!categories.contains(UserCategory.CUSTOMER),
+                "customer accounts must use mobile OTP and cannot have password credentials");
+    }
+
+    private static void validateBuiltInRoleAssignments(Set<UserCategory> categories, Set<String> roles) {
+        for (String role : roles) {
+            if (Set.of(IdentityRoles.MERCHANT_ADMIN, IdentityRoles.MERCHANT_OPERATOR,
+                    IdentityRoles.MERCHANT_USER).contains(role)) {
+                Preconditions.require(categories.contains(UserCategory.MERCHANT),
+                        role + " requires MERCHANT category");
+            }
+            if (Set.of(IdentityRoles.SYSTEM_ADMIN, IdentityRoles.SYSTEM_OPERATOR,
+                    IdentityRoles.UAA_ADMIN).contains(role)) {
+                Preconditions.require(categories.contains(UserCategory.OPERATOR),
+                        role + " requires OPERATOR category");
+            }
+            if (IdentityRoles.SERVICE.equals(role)) {
+                Preconditions.require(categories.contains(UserCategory.SERVICE),
+                        role + " requires SERVICE category");
+            }
+            if (IdentityRoles.CUSTOMER.equals(role)) {
+                throw new IllegalArgumentException("CUSTOMER role is provisioned only by the OTP registration flow");
+            }
+        }
     }
 
     private static UserView toView(UserAccountEntity account, IndividualPartyEntity individual) {
@@ -200,7 +239,9 @@ public class DefaultUserAccountService implements UserAccountService {
                 account.getParty().getId(),
                 account.getParty().getDisplayName(),
                 account.getUsername(),
-                individual == null ? null : individual.getMobile(),
+                account.getAuthenticationMobile() == null && individual != null
+                        ? individual.getMobile()
+                        : account.getAuthenticationMobile(),
                 account.getPrimaryAuthenticationMethod(),
                 account.getStatus(),
                 account.getCategories(),

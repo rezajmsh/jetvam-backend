@@ -5,7 +5,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 
-/** Restores Quartz state from managed definitions whenever the application starts. */
+/**
+ * Restores Quartz state from managed definitions whenever the application starts.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @RequiredArgsConstructor
 public class JobScheduleReconciler implements ApplicationRunner {
 

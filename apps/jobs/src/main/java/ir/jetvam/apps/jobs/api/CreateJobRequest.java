@@ -3,6 +3,12 @@ package ir.jetvam.apps.jobs.api;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+/**
+ * Receives a new job definition and its initial schedule from the management API.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public record CreateJobRequest(
         @NotBlank @Size(max = 100) String code,
         @NotBlank @Size(max = 200) String displayName,

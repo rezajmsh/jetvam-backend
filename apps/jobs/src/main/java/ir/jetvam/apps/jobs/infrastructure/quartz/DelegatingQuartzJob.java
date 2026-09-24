@@ -11,7 +11,12 @@ import org.springframework.scheduling.quartz.QuartzJobBean;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Single Quartz adapter that dispatches every definition to its registered handler. */
+/**
+ * Single Quartz adapter that dispatches every definition to its registered handler.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @DisallowConcurrentExecution
 public class DelegatingQuartzJob extends QuartzJobBean {
 

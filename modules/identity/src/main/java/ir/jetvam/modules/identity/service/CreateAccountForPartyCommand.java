@@ -15,6 +15,7 @@ import java.util.UUID;
 public record CreateAccountForPartyCommand(
         UUID partyId,
         String username,
+        String mobile,
         String password,
         Set<UserCategory> categories,
         Set<String> roleCodes

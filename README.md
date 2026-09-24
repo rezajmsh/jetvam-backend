@@ -1,5 +1,10 @@
 # Jetvam Backend
 
+Business context and source classification are documented in
+[`docs/architecture/jetvam-business-context.md`](docs/architecture/jetvam-business-context.md).
+Frontend login and authorization examples are documented in
+[`docs/security/frontend-authentication.md`](docs/security/frontend-authentication.md).
+
 Backend سامانه Jetvam به‌صورت modular monolith و با سه composition root مستقل سازمان‌دهی شده است.
 
 ## Runtime applications
@@ -63,6 +68,15 @@ Prerequisites: Java 21+ and Maven 3.6.3+.
 ```shell
 mvn clean verify
 ```
+
+Generate aggregated API documentation for all modules with:
+
+```shell
+mvn package javadoc:aggregate
+```
+
+Class-level JavaDoc contains the rendered description followed by `@author reza jamshidi` and
+the type creation date in `@since M/d/yyyy` format.
 
 Versions are centralized in the root `pom.xml`. The current baseline is Spring Boot 4.1.1 and Spring Modulith 2.1.1.
 

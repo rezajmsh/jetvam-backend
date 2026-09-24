@@ -9,5 +9,6 @@ package ir.jetvam.modules.identity.model;
  */
 public enum OtpPurpose {
     CUSTOMER_REGISTRATION,
-    CUSTOMER_LOGIN
+    CUSTOMER_LOGIN,
+    PASSWORD_LOGIN_SECOND_FACTOR
 }

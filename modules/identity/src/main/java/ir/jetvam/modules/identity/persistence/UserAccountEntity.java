@@ -48,6 +48,9 @@ public class UserAccountEntity extends AbstractAuditableUuidEntity {
     @Column(name = "password_hash", length = 255)
     private String passwordHash;
 
+    @Column(name = "authentication_mobile", length = 11)
+    private String authenticationMobile;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "primary_authentication_method", nullable = false, length = 30)
     private AuthenticationMethod primaryAuthenticationMethod;
@@ -86,13 +89,45 @@ public class UserAccountEntity extends AbstractAuditableUuidEntity {
             Set<UserCategory> categories,
             Set<RoleEntity> roles
     ) {
-        this(party, username, passwordHash, AuthenticationMethod.PASSWORD, categories, roles);
+        this(
+                party,
+                username,
+                passwordHash,
+                party instanceof IndividualPartyEntity individual ? individual.getMobile() : null,
+                AuthenticationMethod.PASSWORD,
+                categories,
+                roles
+        );
     }
 
     public UserAccountEntity(
             PartyEntity party,
             String username,
             String passwordHash,
+            String authenticationMobile,
+            Set<UserCategory> categories,
+            Set<RoleEntity> roles
+    ) {
+        this(party, username, passwordHash, authenticationMobile,
+                AuthenticationMethod.PASSWORD, categories, roles);
+    }
+
+    public UserAccountEntity(
+            PartyEntity party,
+            String username,
+            String passwordHash,
+            AuthenticationMethod primaryAuthenticationMethod,
+            Set<UserCategory> categories,
+            Set<RoleEntity> roles
+    ) {
+        this(party, username, passwordHash, null, primaryAuthenticationMethod, categories, roles);
+    }
+
+    private UserAccountEntity(
+            PartyEntity party,
+            String username,
+            String passwordHash,
+            String authenticationMobile,
             AuthenticationMethod primaryAuthenticationMethod,
             Set<UserCategory> categories,
             Set<RoleEntity> roles
@@ -105,8 +140,9 @@ public class UserAccountEntity extends AbstractAuditableUuidEntity {
         if (primaryAuthenticationMethod == AuthenticationMethod.PASSWORD) {
             this.username = Preconditions.requireText(username, "username");
             this.passwordHash = Preconditions.requireText(passwordHash, "passwordHash");
+            this.authenticationMobile = authenticationMobile;
         } else {
-            Preconditions.require(username == null && passwordHash == null,
+            Preconditions.require(username == null && passwordHash == null && authenticationMobile == null,
                     "OTP accounts must not contain username or password credentials");
         }
         this.categories.addAll(Preconditions.requireNonNull(categories, "categories"));

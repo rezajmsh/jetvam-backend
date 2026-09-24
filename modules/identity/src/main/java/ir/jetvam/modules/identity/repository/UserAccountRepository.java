@@ -30,4 +30,6 @@ public interface UserAccountRepository extends JetvamJpaRepository<UserAccountEn
 
     boolean existsByUsernameIgnoreCase(String username);
 
+    boolean existsByAuthenticationMobile(String authenticationMobile);
+
 }

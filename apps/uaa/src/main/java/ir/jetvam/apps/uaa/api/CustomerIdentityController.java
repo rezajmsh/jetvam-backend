@@ -62,7 +62,7 @@ public class CustomerIdentityController {
     }
 
     @PatchMapping("/profile")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') and hasAuthority('profile:write:self')")
     public CustomerProfileView completeProfile(@Valid @RequestBody CompleteCustomerProfileRequest request) {
         return registrationService.completeProfile(
                 CurrentUser.userId(),

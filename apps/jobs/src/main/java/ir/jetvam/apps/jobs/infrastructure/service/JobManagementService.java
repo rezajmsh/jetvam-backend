@@ -6,7 +6,12 @@ import org.springframework.data.domain.Pageable;
 import java.util.List;
 import java.util.UUID;
 
-/** Administrative use cases for definitions, history, and manual execution. */
+/**
+ * Administrative use cases for definitions, history, and manual execution.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public interface JobManagementService {
 
     JobDefinitionView create(CreateJobDefinitionCommand command);

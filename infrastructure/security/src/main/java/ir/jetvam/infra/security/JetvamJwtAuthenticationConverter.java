@@ -74,7 +74,9 @@ public final class JetvamJwtAuthenticationConverter implements Converter<Jwt, Ab
     private static Map<String, Object> selectedAttributes(Jwt jwt) {
         return Map.of(
                 "issuer", jwt.getIssuer() == null ? "" : jwt.getIssuer().toString(),
-                "clientId", jwt.getClaimAsString("client_id") == null ? "" : jwt.getClaimAsString("client_id")
+                "clientId", jwt.getClaimAsString("client_id") == null ? "" : jwt.getClaimAsString("client_id"),
+                SecurityClaims.AUTHENTICATION_METHODS,
+                strings(jwt.getClaims().get(SecurityClaims.AUTHENTICATION_METHODS))
         );
     }
 }

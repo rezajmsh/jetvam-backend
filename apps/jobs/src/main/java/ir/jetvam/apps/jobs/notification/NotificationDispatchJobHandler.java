@@ -8,7 +8,12 @@ import ir.jetvam.modules.notification.delivery.NotificationDeliveryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-/** Jobs-app adapter; notification delivery remains owned by the notification module. */
+/**
+ * Jobs-app adapter; notification delivery remains owned by the notification module.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @Component
 @RequiredArgsConstructor
 public class NotificationDispatchJobHandler implements JobHandler {

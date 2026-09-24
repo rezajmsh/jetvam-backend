@@ -16,6 +16,7 @@ import java.util.Set;
  */
 public record CreateAccountForPartyRequest(
         @NotBlank String username,
+        @NotBlank String mobile,
         @NotBlank @Size(min = 10, max = 200) String password,
         @NotEmpty Set<UserCategory> categories,
         Set<String> roles

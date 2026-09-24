@@ -40,8 +40,9 @@ class JetvamJwtAuthenticationConverterTest {
                 .claim(SecurityClaims.USER_ID, userId.toString())
                 .claim(SecurityClaims.PARTY_ID, partyId.toString())
                 .claim(SecurityClaims.CATEGORIES, List.of("OPERATOR"))
-                .claim(SecurityClaims.ROLES, List.of("UAA_ADMIN"))
+                .claim(SecurityClaims.ROLES, List.of("SYSTEM_ADMIN"))
                 .claim(SecurityClaims.PERMISSIONS, List.of("identity:user:read"))
+                .claim(SecurityClaims.AUTHENTICATION_METHODS, List.of("pwd", "otp"))
                 .claim("scope", "jetvam.api")
                 .build();
 
@@ -52,10 +53,12 @@ class JetvamJwtAuthenticationConverterTest {
         assertThat(current.userId()).isEqualTo(userId);
         assertThat(current.partyId()).isEqualTo(partyId);
         assertThat(current.categories()).containsExactly(UserCategory.OPERATOR);
-        assertThat(CurrentUser.hasRole("UAA_ADMIN")).isTrue();
+        assertThat(CurrentUser.hasRole("SYSTEM_ADMIN")).isTrue();
         assertThat(CurrentUser.hasPermission("identity:user:read")).isTrue();
+        assertThat(current.attributes().get(SecurityClaims.AUTHENTICATION_METHODS))
+                .isEqualTo(Set.of("pwd", "otp"));
         assertThat(authentication.getAuthorities())
                 .extracting("authority")
-                .containsExactlyInAnyOrder("ROLE_UAA_ADMIN", "identity:user:read", "SCOPE_jetvam.api");
+                .containsExactlyInAnyOrder("ROLE_SYSTEM_ADMIN", "identity:user:read", "SCOPE_jetvam.api");
     }
 }

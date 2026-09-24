@@ -8,7 +8,12 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** Persistent operational definition of a job and its schedule. */
+/**
+ * Persistent operational definition of a job and its schedule.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @Entity
 @Table(name = "job_definition")
 @Getter

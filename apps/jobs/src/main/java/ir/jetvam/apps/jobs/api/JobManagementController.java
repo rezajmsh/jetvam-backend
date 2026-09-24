@@ -27,7 +27,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
-/** Secured operational API for job catalog management and execution history. */
+/**
+ * Secured operational API for job catalog management and execution history.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @RestController
 @RequestMapping("/api/v1/jobs")
 @RequiredArgsConstructor
@@ -36,26 +41,26 @@ public class JobManagementController {
     private final JobManagementService service;
 
     @GetMapping
-    @PreAuthorize("hasAuthority('jobs:read') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('jobs:read')")
     public List<JobDefinitionView> findAll() {
         return service.findAll();
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('jobs:read') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('jobs:read')")
     public JobDefinitionView get(@PathVariable UUID id) {
         return service.get(id);
     }
 
     @GetMapping("/handlers")
-    @PreAuthorize("hasAuthority('jobs:read') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('jobs:read')")
     public List<String> handlers() {
         return service.registeredHandlerKeys();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAuthority('jobs:write') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('jobs:write')")
     public JobDefinitionView create(@Valid @RequestBody CreateJobRequest request) {
         return service.create(new CreateJobDefinitionCommand(
                 request.code(), request.displayName(), request.description(), request.handlerKey(),
@@ -64,7 +69,7 @@ public class JobManagementController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('jobs:write') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('jobs:write')")
     public JobDefinitionView update(@PathVariable UUID id, @Valid @RequestBody UpdateJobRequest request) {
         return service.update(id, new UpdateJobDefinitionCommand(
                 request.displayName(), request.description(), request.handlerKey(),
@@ -73,7 +78,7 @@ public class JobManagementController {
     }
 
     @PatchMapping("/{id}/enabled")
-    @PreAuthorize("hasAuthority('jobs:write') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('jobs:write')")
     public JobDefinitionView setEnabled(
             @PathVariable UUID id,
             @RequestBody SetJobEnabledRequest request
@@ -82,7 +87,7 @@ public class JobManagementController {
     }
 
     @GetMapping("/{id}/executions")
-    @PreAuthorize("hasAuthority('jobs:read') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('jobs:read')")
     public Page<JobExecutionView> history(
             @PathVariable UUID id,
             @PageableDefault(size = 50, sort = "createdAt", direction = org.springframework.data.domain.Sort.Direction.DESC)
@@ -92,14 +97,14 @@ public class JobManagementController {
     }
 
     @GetMapping("/{id}/statistics")
-    @PreAuthorize("hasAuthority('jobs:read') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('jobs:read')")
     public JobStatisticsView statistics(@PathVariable UUID id) {
         return service.statistics(id);
     }
 
     @PostMapping("/{id}/executions")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @PreAuthorize("hasAuthority('jobs:execute') or hasAnyRole('SYSTEM_OPERATOR', 'UAA_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('jobs:execute')")
     public JobExecutionView execute(@PathVariable UUID id, Authentication authentication) {
         return service.executeManually(id, authentication.getName());
     }

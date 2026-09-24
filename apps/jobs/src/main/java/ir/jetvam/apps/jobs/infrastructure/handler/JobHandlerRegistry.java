@@ -8,7 +8,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** Resolves handlers by stable keys and rejects ambiguous registrations. */
+/**
+ * Resolves handlers by stable keys and rejects ambiguous registrations.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public final class JobHandlerRegistry {
 
     private final Map<String, JobHandler> handlers;

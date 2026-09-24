@@ -20,6 +20,12 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Implements job definition management, history queries, and manual execution requests.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @RequiredArgsConstructor
 public class DefaultJobManagementService implements JobManagementService {
 

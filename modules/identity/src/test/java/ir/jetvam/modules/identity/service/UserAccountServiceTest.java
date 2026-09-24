@@ -25,14 +25,7 @@ class UserAccountServiceTest {
 
     @Test
     void rejectsInvalidNationalCodeBeforeCreatingIdentityRecords() {
-        var service = new DefaultUserAccountService(
-                mock(PartyRepository.class),
-                mock(IndividualPartyRepository.class),
-                mock(UserAccountRepository.class),
-                mock(RoleRepository.class),
-                mock(CustomerProfileRepository.class),
-                PasswordEncoderFactories.createDelegatingPasswordEncoder()
-        );
+        var service = service();
         var command = new CreateUserCommand(
                 null,
                 "09121234567",
@@ -46,5 +39,54 @@ class UserAccountServiceTest {
         );
 
         assertThatIllegalArgumentException().isThrownBy(() -> service.create(command));
+    }
+
+    @Test
+    void rejectsPasswordCredentialsForCustomers() {
+        var service = service();
+        var command = new CreateUserCommand(
+                "customer",
+                "09123456789",
+                "0067749828",
+                "Customer",
+                "Applicant",
+                null,
+                "strong-password",
+                Set.of(UserCategory.CUSTOMER),
+                Set.of()
+        );
+
+        assertThatIllegalArgumentException().isThrownBy(() -> service.create(command))
+                .withMessageContaining("customer accounts must use mobile OTP");
+    }
+
+    @Test
+    void requiresMobileForPasswordAccountsSoTwoFactorCanBeEnabledLater() {
+        var service = service();
+        var command = new CreateUserCommand(
+                "operator",
+                null,
+                "0067749828",
+                "System",
+                "Operator",
+                null,
+                "strong-password",
+                Set.of(UserCategory.OPERATOR),
+                Set.of()
+        );
+
+        assertThatIllegalArgumentException().isThrownBy(() -> service.create(command))
+                .withMessageContaining("mobile is invalid");
+    }
+
+    private static DefaultUserAccountService service() {
+        return new DefaultUserAccountService(
+                mock(PartyRepository.class),
+                mock(IndividualPartyRepository.class),
+                mock(UserAccountRepository.class),
+                mock(RoleRepository.class),
+                mock(CustomerProfileRepository.class),
+                PasswordEncoderFactories.createDelegatingPasswordEncoder()
+        );
     }
 }

@@ -185,6 +185,7 @@ public class DefaultOtpChallengeService implements OtpChallengeService {
         return switch (purpose) {
             case CUSTOMER_REGISTRATION -> "identity.otp.customer-registration";
             case CUSTOMER_LOGIN -> "identity.otp.customer-login";
+            case PASSWORD_LOGIN_SECOND_FACTOR -> "identity.otp.password-login-second-factor";
         };
     }
 

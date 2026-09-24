@@ -6,7 +6,12 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 import org.springframework.scheduling.quartz.SpringBeanJobFactory;
 
-/** Allows Quartz-created job instances to use Spring-managed collaborators. */
+/**
+ * Allows Quartz-created job instances to use Spring-managed collaborators.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public final class AutowiringSpringBeanJobFactory extends SpringBeanJobFactory
         implements ApplicationContextAware {
 

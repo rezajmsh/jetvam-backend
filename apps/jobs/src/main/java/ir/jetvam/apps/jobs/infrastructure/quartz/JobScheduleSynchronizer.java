@@ -17,7 +17,12 @@ import org.quartz.TriggerKey;
 import java.util.TimeZone;
 import java.util.UUID;
 
-/** Reconciles application-owned definitions with durable Quartz jobs and triggers. */
+/**
+ * Reconciles application-owned definitions with durable Quartz jobs and triggers.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @RequiredArgsConstructor
 public class JobScheduleSynchronizer {
 

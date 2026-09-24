@@ -19,7 +19,12 @@ import lombok.NoArgsConstructor;
 import java.time.Duration;
 import java.time.Instant;
 
-/** Immutable-snapshot history record for one scheduled or manual execution. */
+/**
+ * Immutable-snapshot history record for one scheduled or manual execution.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @Entity
 @Table(name = "job_execution")
 @Getter

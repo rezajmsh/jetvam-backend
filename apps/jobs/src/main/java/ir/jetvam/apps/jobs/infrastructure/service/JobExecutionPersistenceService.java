@@ -17,7 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.UUID;
 
-/** Keeps short history transactions separate from potentially long handler calls. */
+/**
+ * Keeps short history transactions separate from potentially long handler calls.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @RequiredArgsConstructor
 public class JobExecutionPersistenceService {
 

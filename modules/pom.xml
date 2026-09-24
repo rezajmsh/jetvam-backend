@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>identity</module>
+        <module>settings</module>
         <module>product</module>
         <module>origination</module>
         <module>assessment</module>

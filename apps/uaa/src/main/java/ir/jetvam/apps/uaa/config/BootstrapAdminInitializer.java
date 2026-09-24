@@ -45,7 +45,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
                 null,
                 admin.getPassword(),
                 Set.of(UserCategory.OPERATOR),
-                Set.of(IdentityRoles.SYSTEM_OPERATOR, IdentityRoles.UAA_ADMIN)
+                Set.of(IdentityRoles.SYSTEM_ADMIN)
         ));
     }
 }

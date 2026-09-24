@@ -9,6 +9,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.UUID;
 
+/**
+ * Persists execution history and aggregates item-level counters for managed jobs.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 public interface JobExecutionRepository extends JetvamJpaRepository<JobExecutionEntity, UUID> {
 
     Page<JobExecutionEntity> findAllByDefinition_Id(UUID definitionId, Pageable pageable);

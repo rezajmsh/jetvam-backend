@@ -21,7 +21,12 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** Auto-configures persistent job management while handlers remain application-owned. */
+/**
+ * Auto-configures persistent job management while handlers remain application-owned.
+ *
+ * @author reza jamshidi
+ * @since 9/23/2026
+ */
 @Configuration(proxyBeanMethods = false)
 @ConditionalOnClass(Scheduler.class)
 @ConditionalOnProperty(prefix = "jetvam.jobs", name = "enabled", havingValue = "true", matchIfMissing = true)
