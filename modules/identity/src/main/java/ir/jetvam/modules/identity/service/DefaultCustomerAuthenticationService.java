@@ -5,8 +5,11 @@ import ir.jetvam.common.security.UserCategory;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.common.validation.IranianIdentifiers;
 import ir.jetvam.common.validation.Preconditions;
+import ir.jetvam.modules.identity.IdentityOtpPurposes;
 import ir.jetvam.modules.identity.model.AuthenticationMethod;
-import ir.jetvam.modules.identity.model.OtpPurpose;
+import ir.jetvam.modules.otp.service.OtpChallengeService;
+import ir.jetvam.modules.otp.service.OtpChallengeView;
+import ir.jetvam.modules.otp.service.OtpVerificationData;
 import ir.jetvam.modules.identity.persistence.UserAccountEntity;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
@@ -37,13 +40,17 @@ public class DefaultCustomerAuthenticationService implements CustomerAuthenticat
     public OtpChallengeView requestOtp(String value) {
         String mobile = IranianIdentifiers.normalizeMobileNumber(value);
         Preconditions.require(IranianIdentifiers.isValidMobileNumber(mobile), "mobile is invalid");
-        return otpChallengeService.issue(mobile, null, OtpPurpose.CUSTOMER_LOGIN);
+        return otpChallengeService.issue(mobile, null, IdentityOtpPurposes.CUSTOMER_LOGIN);
     }
 
     @Override
     @Transactional
     public IdentityUserPrincipal authenticate(UUID challengeId, String otp) {
-        OtpVerificationData verified = otpChallengeService.consume(challengeId, otp, OtpPurpose.CUSTOMER_LOGIN);
+        OtpVerificationData verified = otpChallengeService.consume(
+                challengeId,
+                otp,
+                IdentityOtpPurposes.CUSTOMER_LOGIN
+        );
         UserAccountEntity account = individualRepository.findByMobile(verified.mobile())
                 .flatMap(individual -> userRepository.findByParty_IdAndPrimaryAuthenticationMethod(
                         individual.getId(),

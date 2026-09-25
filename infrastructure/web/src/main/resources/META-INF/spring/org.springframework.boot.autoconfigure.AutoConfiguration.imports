@@ -1,1 +1,2 @@
 ir.jetvam.infra.web.config.JetvamWebAutoConfiguration
+ir.jetvam.infra.web.openapi.JetvamOpenApiAutoConfiguration

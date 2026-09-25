@@ -11,6 +11,23 @@ spring:
   jpa:
     open-in-view: false
 
+springdoc:
+  enable-default-api-docs: false
+  show-oauth2-endpoints: true
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+  group-configs:
+    - group: identity
+      display-name: Identity and authentication
+      paths-to-match: [/api/v1/customer/**, /api/v1/users/**, /oauth2/**]
+    - group: settings
+      display-name: Runtime settings
+      paths-to-match: [/api/v1/settings/**]
+    - group: integration
+      display-name: External providers
+      paths-to-match: [/api/v1/integrations/**]
+
 server:
   port: ${JETVAM_UAA_PORT:8081}
   shutdown: graceful
@@ -66,16 +83,14 @@ jetvam:
       first-name: ${JETVAM_BOOTSTRAP_ADMIN_FIRST_NAME:}
       last-name: ${JETVAM_BOOTSTRAP_ADMIN_LAST_NAME:}
       password: ${JETVAM_BOOTSTRAP_ADMIN_PASSWORD:}
-  identity:
-    security:
-      otp:
-        code-length: ${JETVAM_OTP_CODE_LENGTH:6}
-        time-to-live: ${JETVAM_OTP_TTL:2m}
-        resend-interval: ${JETVAM_OTP_RESEND_INTERVAL:60s}
-        rate-limit-window: ${JETVAM_OTP_RATE_LIMIT_WINDOW:1h}
-        max-attempts: ${JETVAM_OTP_MAX_ATTEMPTS:5}
-        max-challenges-per-window: ${JETVAM_OTP_MAX_CHALLENGES_PER_WINDOW:5}
-        hmac-secret: ${JETVAM_OTP_HMAC_SECRET:}
+  otp:
+    code-length: ${JETVAM_OTP_CODE_LENGTH:6}
+    time-to-live: ${JETVAM_OTP_TTL:2m}
+    resend-interval: ${JETVAM_OTP_RESEND_INTERVAL:60s}
+    rate-limit-window: ${JETVAM_OTP_RATE_LIMIT_WINDOW:1h}
+    max-attempts: ${JETVAM_OTP_MAX_ATTEMPTS:5}
+    max-challenges-per-window: ${JETVAM_OTP_MAX_CHALLENGES_PER_WINDOW:5}
+    hmac-secret: ${JETVAM_OTP_HMAC_SECRET:}
   http-client:
     connect-timeout: ${JETVAM_HTTP_CONNECT_TIMEOUT:3s}
     read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}
@@ -133,6 +148,10 @@ jetvam:
       metrics-enabled: true
       level: ${JETVAM_AUDIT_EVENT_LEVEL:INFO}
   web:
+    openapi:
+      title: Jetvam UAA API
+      description: Identity, authentication, settings and integration administration APIs
+      version: v1
     response:
       envelope-enabled: true
       excluded-paths: [/actuator, /v3/api-docs, /swagger-ui]

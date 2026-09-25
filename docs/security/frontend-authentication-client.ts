@@ -20,11 +20,12 @@ export interface OtpChallenge {
   resendAvailableAt: string;
 }
 
-export interface PasswordLoginPreparation {
-  secondFactorRequired: boolean;
-  challengeId: string | null;
-  expiresAt: string | null;
-  resendAvailableAt: string | null;
+export interface SecondFactorRequiredResponse {
+  error: "second_factor_required";
+  error_description: string;
+  challenge_id: string;
+  expires_at: string;
+  resend_available_at: string;
 }
 
 export interface TokenResponse {
@@ -34,6 +35,23 @@ export interface TokenResponse {
   expires_in: number;
   scope: string;
 }
+
+export interface ApiEnvelope<T> {
+  success: boolean;
+  data: T;
+  error: { code: string; message: string } | null;
+  meta: { timestamp: string; requestId: string; traceId: string };
+}
+
+interface ErrorPayload {
+  error?: string | { message?: string };
+  error_description?: string;
+  message?: string;
+}
+
+export type PasswordLoginOutcome =
+  | { status: "authenticated"; tokens: TokenResponse }
+  | { status: "second_factor_required"; challenge: OtpChallenge };
 
 export async function requestCustomerLoginOtp(mobile: string): Promise<OtpChallenge> {
   return postJson<OtpChallenge>("/api/v1/customer/auth/otp", { mobile });
@@ -52,40 +70,53 @@ export async function completeCustomerLogin(
   });
 }
 
-export async function preparePasswordLogin(
+export async function startPasswordLogin(
+  portal: Portal,
   username: string,
   password: string,
-): Promise<PasswordLoginPreparation> {
-  return postJson<PasswordLoginPreparation>("/api/v1/password-users/auth/prepare", {
+): Promise<PasswordLoginOutcome> {
+  const response = await sendTokenRequest({
+    client_id: portal === "system" ? "jetvam-backoffice" : "jetvam-merchant-portal",
+    grant_type: PASSWORD_GRANT,
     username,
     password,
+    scope: SCOPE,
   });
+  const payload = await response.json();
+  if (response.ok) {
+    return { status: "authenticated", tokens: payload as TokenResponse };
+  }
+  if (payload.error === "second_factor_required") {
+    const secondFactor = payload as SecondFactorRequiredResponse;
+    return {
+      status: "second_factor_required",
+      challenge: {
+        challengeId: secondFactor.challenge_id,
+        expiresAt: secondFactor.expires_at,
+        resendAvailableAt: secondFactor.resend_available_at,
+      },
+    };
+  }
+  throw authenticationError(payload);
 }
 
 export async function completePasswordLogin(input: {
   portal: Portal;
   username: string;
   password: string;
-  preparation: PasswordLoginPreparation;
-  otp?: string;
+  challengeId: string;
+  otp: string;
 }): Promise<TokenResponse> {
-  const { portal, username, password, preparation, otp } = input;
-  if (preparation.secondFactorRequired && (!preparation.challengeId || !otp)) {
-    throw new Error("OTP and challengeId are required by the current 2FA policy");
-  }
-
-  const parameters: Record<string, string> = {
+  const { portal, username, password, challengeId, otp } = input;
+  return requestToken({
     client_id: portal === "system" ? "jetvam-backoffice" : "jetvam-merchant-portal",
     grant_type: PASSWORD_GRANT,
     username,
     password,
+    challenge_id: challengeId,
+    otp,
     scope: SCOPE,
-  };
-  if (preparation.secondFactorRequired) {
-    parameters.challenge_id = preparation.challengeId!;
-    parameters.otp = otp!;
-  }
-  return requestToken(parameters);
+  });
 }
 
 export async function refreshAccessToken(
@@ -105,22 +136,33 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return readResponse<T>(response);
+  const envelope = await readResponse<ApiEnvelope<T>>(response);
+  return envelope.data;
 }
 
 async function requestToken(parameters: Record<string, string>): Promise<TokenResponse> {
-  const response = await fetch(TOKEN_ENDPOINT, {
+  return readResponse<TokenResponse>(await sendTokenRequest(parameters));
+}
+
+async function sendTokenRequest(parameters: Record<string, string>): Promise<Response> {
+  return fetch(TOKEN_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(parameters),
   });
-  return readResponse<TokenResponse>(response);
 }
 
 async function readResponse<T>(response: Response): Promise<T> {
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload.error_description ?? payload.message ?? payload.error ?? "Authentication failed");
+    throw authenticationError(payload);
   }
   return payload as T;
+}
+
+function authenticationError(payload: unknown): Error {
+  const error = (payload ?? {}) as ErrorPayload;
+  const oauthError = typeof error.error === "string" ? error.error : undefined;
+  const apiError = typeof error.error === "object" ? error.error.message : undefined;
+  return new Error(error.error_description ?? apiError ?? error.message ?? oauthError ?? "Authentication failed");
 }

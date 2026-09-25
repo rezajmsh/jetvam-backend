@@ -1,7 +1,6 @@
 package ir.jetvam.modules.identity.config;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
@@ -15,7 +14,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * @since 9/21/2026
  */
 @Configuration(proxyBeanMethods = false)
-@EnableConfigurationProperties(IdentitySecurityProperties.class)
 public class IdentityModuleConfiguration {
 
     @Bean

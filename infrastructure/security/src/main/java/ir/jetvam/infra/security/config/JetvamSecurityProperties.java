@@ -24,6 +24,7 @@ public class JetvamSecurityProperties {
             "/actuator/health/**",
             "/actuator/info",
             "/v3/api-docs/**",
-            "/swagger-ui/**"
+            "/swagger-ui/**",
+            "/swagger-ui.html"
     ));
 }

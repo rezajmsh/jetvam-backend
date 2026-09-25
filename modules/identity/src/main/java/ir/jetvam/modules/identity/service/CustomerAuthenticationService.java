@@ -1,5 +1,7 @@
 package ir.jetvam.modules.identity.service;
 
+import ir.jetvam.modules.otp.service.OtpChallengeView;
+
 import ir.jetvam.modules.identity.security.IdentityUserPrincipal;
 
 import java.util.UUID;

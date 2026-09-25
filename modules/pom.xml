@@ -12,6 +12,7 @@
     <artifactId>jetvam-business-modules</artifactId>
     <packaging>pom</packaging>
     <modules>
+        <module>otp</module>
         <module>identity</module>
         <module>settings</module>
         <module>product</module>
@@ -24,7 +25,7 @@
         <module>merchant</module>
         <module>transaction</module>
         <module>settlement</module>
-        <module>notification</module>
         <module>integration</module>
+        <module>notification</module>
     </modules>
 </project>

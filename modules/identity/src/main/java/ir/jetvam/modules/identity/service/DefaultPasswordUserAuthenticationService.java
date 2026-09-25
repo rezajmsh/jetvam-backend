@@ -4,8 +4,11 @@ import ir.jetvam.common.exception.ValidationException;
 import ir.jetvam.common.security.UserCategory;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.common.validation.Preconditions;
+import ir.jetvam.modules.identity.IdentityOtpPurposes;
 import ir.jetvam.modules.identity.model.AuthenticationMethod;
-import ir.jetvam.modules.identity.model.OtpPurpose;
+import ir.jetvam.modules.otp.service.OtpChallengeService;
+import ir.jetvam.modules.otp.service.OtpChallengeView;
+import ir.jetvam.modules.otp.service.OtpVerificationData;
 import ir.jetvam.modules.identity.persistence.UserAccountEntity;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
 import ir.jetvam.modules.identity.security.IdentityUserPrincipal;
@@ -37,23 +40,7 @@ public class DefaultPasswordUserAuthenticationService implements PasswordUserAut
 
     @Override
     @Transactional
-    public PasswordLoginPreparation prepare(String username, String password) {
-        UserAccountEntity account = passwordAccount(username, password);
-        if (!requiresSecondFactor(account)) {
-            return new PasswordLoginPreparation(false, null);
-        }
-        String mobile = verifiedMobile(account);
-        OtpChallengeView challenge = otpChallengeService.issue(
-                mobile,
-                null,
-                OtpPurpose.PASSWORD_LOGIN_SECOND_FACTOR
-        );
-        return new PasswordLoginPreparation(true, challenge);
-    }
-
-    @Override
-    @Transactional
-    public IdentityUserPrincipal authenticate(
+    public PasswordAuthenticationResult authenticate(
             String username,
             String password,
             UUID challengeId,
@@ -61,12 +48,20 @@ public class DefaultPasswordUserAuthenticationService implements PasswordUserAut
     ) {
         UserAccountEntity account = passwordAccount(username, password);
         if (requiresSecondFactor(account)) {
+            if (challengeId == null && (otp == null || otp.isBlank())) {
+                OtpChallengeView challenge = otpChallengeService.issue(
+                        verifiedMobile(account),
+                        null,
+                        IdentityOtpPurposes.PASSWORD_LOGIN_SECOND_FACTOR
+                );
+                return PasswordAuthenticationResult.secondFactorRequired(challenge);
+            }
             Preconditions.requireNonNull(challengeId, "challengeId");
             Preconditions.requireText(otp, "otp");
             OtpVerificationData verified = otpChallengeService.consume(
                     challengeId,
                     otp,
-                    OtpPurpose.PASSWORD_LOGIN_SECOND_FACTOR
+                    IdentityOtpPurposes.PASSWORD_LOGIN_SECOND_FACTOR
             );
             if (!verifiedMobile(account).equals(verified.mobile())) {
                 throw authenticationFailed();
@@ -75,7 +70,7 @@ public class DefaultPasswordUserAuthenticationService implements PasswordUserAut
             throw authenticationFailed();
         }
         account.recordSuccessfulLogin(timeProvider.now());
-        return IdentityUserPrincipal.from(account);
+        return PasswordAuthenticationResult.authenticated(IdentityUserPrincipal.from(account));
     }
 
     private UserAccountEntity passwordAccount(String value, String password) {

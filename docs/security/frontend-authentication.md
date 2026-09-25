@@ -1,22 +1,76 @@
-# قرارداد ورود فرانت‌اند
+# راهنمای جامع احراز هویت کلاینت‌های جت‌وام
 
-آدرس پیش‌فرض UAA برابر `http://localhost:8081` است. تمام کلاینت‌های فرانت public هستند و
-`client_secret` ندارند. endpoint دریافت و refresh توکن همیشه `POST /oauth2/token` است و بدنه آن
-باید `application/x-www-form-urlencoded` باشد، نه JSON.
+این سند قرارداد ورود، دریافت توکن و تمدید نشست برای پرتال مشتری، پنل عملیاتی جت‌وام و پنل پذیرنده
+است. تیم‌های وب، موبایل و BFF باید جریان‌های این سند را بدون تلاش برای تشخیص نوع کاربر از طریق چند
+endpoint پیاده‌سازی کنند.
 
-نمونه TypeScript قابل استفاده در فرانت در
-[`frontend-authentication-client.ts`](frontend-authentication-client.ts) قرار دارد.
+- نسخه قرارداد: `1.0`
+- تاریخ به‌روزرسانی: `2026-09-24`
+- سرویس صادرکننده توکن: `jetvam-uaa`
 
-## انتخاب جریان ورود
+## 1. اطلاعات پایه
 
-| نوع کاربر | روش ورود | client_id | مرحله اول | مرحله دریافت توکن |
+آدرس محیط local:
+
+```text
+http://localhost:8081
+```
+
+در محیط‌های دیگر، مقدار `UAA_BASE_URL` توسط تنظیمات همان محیط تعیین می‌شود. تمام ارتباطات محیط‌های
+غیر local باید روی HTTPS انجام شوند.
+
+endpoint صدور و تمدید توکن:
+
+```text
+POST {UAA_BASE_URL}/oauth2/token
+```
+
+بدنه درخواست token endpoint همیشه باید با این content type ارسال شود:
+
+```http
+Content-Type: application/x-www-form-urlencoded
+```
+
+بدنه token endpoint نباید JSON باشد. endpointهای `/api/v1/**` که در ادامه آمده‌اند JSON هستند.
+
+کلاینت‌های فعلی public هستند و `client_secret` ندارند. قرار دادن client secret داخل JavaScript،
+اپلیکیشن موبایل یا هر کلاینت قابل نصب ممنوع است.
+
+## 2. انتخاب جریان براساس پرتال
+
+| پرتال | دسته کاربر | نقش‌های اصلی | روش ورود | `client_id` |
 | --- | --- | --- | --- | --- |
-| مشتری | فقط موبایل و OTP | `jetvam-portal` | `POST /api/v1/customer/auth/otp` | grant نوع OTP |
-| ادمین/اپراتور جت‌وام | پسورد و در صورت فعال بودن OTP | `jetvam-backoffice` | `POST /api/v1/password-users/auth/prepare` | grant نوع Password |
-| ادمین/اپراتور پذیرنده | پسورد و در صورت فعال بودن OTP | `jetvam-merchant-portal` | `POST /api/v1/password-users/auth/prepare` | grant نوع Password |
+| پرتال مشتری | `CUSTOMER` | `CUSTOMER` | شماره موبایل و OTP | `jetvam-portal` |
+| پنل جت‌وام | `OPERATOR` | `SYSTEM_ADMIN`، `SYSTEM_OPERATOR` | پسورد و 2FA اختیاری | `jetvam-backoffice` |
+| پنل پذیرنده | `MERCHANT` | `MERCHANT_ADMIN`، `MERCHANT_OPERATOR` | پسورد و 2FA اختیاری | `jetvam-merchant-portal` |
 
-فرانت نوع کاربر را از صفحه یا portal ورود می‌داند؛ برای تشخیص نوع کاربر نباید چند endpoint را
-امتحان کند. پاسخ توکن شامل `access_token`، `refresh_token`، `token_type`، `expires_in` و `scope` است.
+نکات مهم:
+
+- پرتال از قبل می‌داند برای کدام دسته کاربر ساخته شده و باید `client_id` درست را انتخاب کند.
+- برای تشخیص نوع کاربر، درخواست ورود را با چند `client_id` تکرار نکنید.
+- نقش عمومی `MERCHANT_USER` نیز ممکن است برای حساب‌های محدود پذیرنده وجود داشته باشد؛ پنل‌های
+  مدیریتی و عملیاتی باید به‌ترتیب از `MERCHANT_ADMIN` و `MERCHANT_OPERATOR` استفاده کنند.
+- نقش `UAA_ADMIN` legacy است و برای توسعه جدید استفاده نمی‌شود.
+- حساب‌های دسته `SERVICE` ورود تعاملی فرانت ندارند و در این قرارداد پوشش داده نشده‌اند.
+
+## 3. ثابت‌های موردنیاز کلاینت
+
+```text
+OTP_GRANT      = urn:jetvam:params:oauth:grant-type:otp
+PASSWORD_GRANT = urn:jetvam:params:oauth:grant-type:password
+DEFAULT_SCOPE  = jetvam.api offline_access
+```
+
+فرانت باید grant typeها را دقیقاً با همین مقدار ارسال کند.
+
+## 4. پاسخ موفق token endpoint
+
+دو قالب پاسخ مستقل وجود دارد:
+
+- `/oauth2/token` پاسخ استاندارد OAuth و بدون envelope برمی‌گرداند.
+- endpointهای `/api/v1/**` پاسخ را داخل envelope مشترک `{success,data,error,meta}` برمی‌گردانند.
+
+در ورود موفق یا refresh موفق، پاسخ HTTP 200 به شکل زیر است:
 
 ```json
 {
@@ -28,31 +82,60 @@
 }
 ```
 
-## ورود مشتری موجود
+| فیلد | توضیح |
+| --- | --- |
+| `access_token` | JWT مورد استفاده برای فراخوانی APIهای محافظت‌شده |
+| `refresh_token` | توکن یک‌بارمصرف برای تمدید نشست |
+| `token_type` | در حال حاضر همیشه `Bearer` |
+| `expires_in` | عمر access token برحسب ثانیه |
+| `scope` | scopeهای صادرشده برای نشست |
 
-### 1. ارسال OTP
+عمر پیش‌فرض access token پانزده دقیقه و refresh token سی روز است، اما کلاینت نباید این اعداد را
+hard-code کند؛ همیشه از `expires_in` پاسخ استفاده شود.
+
+## 5. ورود مشتری موجود با موبایل و OTP
+
+مشتری username و password ندارد. ورود مشتری دو مرحله دارد.
+
+### 5.1. درخواست OTP
 
 ```http
 POST /api/v1/customer/auth/otp HTTP/1.1
 Host: localhost:8081
 Content-Type: application/json
 
-{"mobile":"09121234567"}
-```
-
-نمونه پاسخ:
-
-```json
 {
-  "challengeId": "7df2f6cf-7548-4f76-a984-beb46a682589",
-  "expiresAt": "2026-09-23T17:35:00Z",
-  "resendAvailableAt": "2026-09-23T17:31:00Z"
+  "mobile": "09121234567"
 }
 ```
 
-فرانت باید `challengeId` را موقت نگه دارد و صفحه ورود کد پیامک را نمایش دهد.
+پاسخ موفق HTTP 202:
 
-### 2. تبدیل OTP به توکن
+```json
+{
+  "success": true,
+  "data": {
+    "challengeId": "7df2f6cf-7548-4f76-a984-beb46a682589",
+    "expiresAt": "2026-09-24T17:35:00Z",
+    "resendAvailableAt": "2026-09-24T17:31:00Z"
+  },
+  "error": null,
+  "meta": {
+    "timestamp": "2026-09-24T17:30:00Z",
+    "requestId": "8b317657-2d10-4d5b-931e-f8bcc81c39fd",
+    "traceId": "b13d0d6e2f164f66a276aaca691e7438"
+  }
+}
+```
+
+فرانت باید:
+
+1. `data.challengeId` را فقط تا پایان جریان ورود در حافظه موقت نگه دارد.
+2. زمان انقضا را با `data.expiresAt` نمایش دهد.
+3. دکمه ارسال مجدد را قبل از `data.resendAvailableAt` فعال نکند.
+4. از متن پاسخ برای تشخیص وجود یا عدم وجود حساب استفاده نکند.
+
+### 5.2. تبدیل OTP به توکن
 
 ```http
 POST /oauth2/token HTTP/1.1
@@ -62,45 +145,102 @@ Content-Type: application/x-www-form-urlencoded
 client_id=jetvam-portal&grant_type=urn%3Ajetvam%3Aparams%3Aoauth%3Agrant-type%3Aotp&challenge_id=7df2f6cf-7548-4f76-a984-beb46a682589&otp=123456&scope=jetvam.api%20offline_access
 ```
 
-مشتری هیچ‌وقت username/password ندارد. مشتری جدید ابتدا از
-`POST /api/v1/customer/registrations/otp` و سپس `/registrations/verify` استفاده می‌کند؛ بعد از
-ثبت‌نام برای گرفتن توکن همین جریان ورود مشتری را انجام می‌دهد.
+پارامترها:
 
-## ورود ادمین یا اپراتور جت‌وام
+| پارامتر | اجباری | مقدار |
+| --- | --- | --- |
+| `client_id` | بله | `jetvam-portal` |
+| `grant_type` | بله | `urn:jetvam:params:oauth:grant-type:otp` |
+| `challenge_id` | بله | شناسه مرحله قبل |
+| `otp` | بله | کد واردشده توسط مشتری |
+| `scope` | پیشنهاد می‌شود | `jetvam.api offline_access` |
 
-### 1. بررسی پسورد و سیاست 2FA
+OTP موفق فقط یک‌بار قابل مصرف است. برای تلاش مجدد پس از مصرف یا انقضا باید challenge جدید گرفته شود.
+
+## 6. ثبت‌نام مشتری جدید
+
+این بخش فقط برای مشتری‌ای است که هنوز حساب ندارد. ثبت‌نام توکن صادر نمی‌کند؛ پس از ثبت‌نام، مشتری
+از جریان ورود بخش 5 استفاده می‌کند.
+
+### 6.1. ارسال OTP ثبت‌نام
 
 ```http
-POST /api/v1/password-users/auth/prepare HTTP/1.1
+POST /api/v1/customer/registrations/otp HTTP/1.1
 Host: localhost:8081
 Content-Type: application/json
 
-{"username":"operator","password":"correct-password"}
-```
-
-اگر 2FA خاموش باشد:
-
-```json
 {
-  "secondFactorRequired": false,
-  "challengeId": null,
-  "expiresAt": null,
-  "resendAvailableAt": null
+  "mobile": "09121234567",
+  "nationalCode": "0067749828"
 }
 ```
 
-اگر 2FA روشن باشد، OTP ارسال می‌شود:
+پاسخ HTTP 202 همان ساختار challenge بخش قبل را دارد.
 
-```json
+### 6.2. تأیید OTP و مالکیت سیم‌کارت
+
+```http
+POST /api/v1/customer/registrations/verify HTTP/1.1
+Host: localhost:8081
+Content-Type: application/json
+
 {
-  "secondFactorRequired": true,
-  "challengeId": "ef524cba-4021-474d-8d75-64be30b6e111",
-  "expiresAt": "2026-09-23T17:35:00Z",
-  "resendAvailableAt": "2026-09-23T17:31:00Z"
+  "challengeId": "7df2f6cf-7548-4f76-a984-beb46a682589",
+  "otp": "123456"
 }
 ```
 
-### 2. دریافت توکن بدون 2FA
+در این مرحله backend استعلام شاهکار را انجام می‌دهد. پاسخ موفق HTTP 201:
+
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "1599f089-a189-431f-8f53-e019f2a0ad6d",
+    "partyId": "d2b02e34-790f-4485-82aa-d194041e609a",
+    "onboardingStatus": "IDENTITY_VERIFIED"
+  },
+  "error": null,
+  "meta": {
+    "timestamp": "2026-09-24T17:31:00Z",
+    "requestId": "3b6e3134-a80a-4bcc-b0ae-957df30ddc12",
+    "traceId": "a67b7054f39749ef85c89aa7524ca8ea"
+  }
+}
+```
+
+بعد از موفقیت، فرانت باید جریان ورود مشتری را از `POST /api/v1/customer/auth/otp` شروع کند. پاسخ
+ثبت‌نام به‌تنهایی نشست authenticated ایجاد نمی‌کند.
+
+### 6.3. تکمیل پروفایل بعد از ورود
+
+پس از دریافت access token مشتری:
+
+```http
+PATCH /api/v1/customer/profile HTTP/1.1
+Host: localhost:8081
+Authorization: Bearer <access-token>
+Content-Type: application/json
+
+{
+  "firstName": "علی",
+  "lastName": "احمدی",
+  "birthDate": "1990-05-20"
+}
+```
+
+## 7. ورود ادمین و اپراتور جت‌وام
+
+برای هر دو نقش `SYSTEM_ADMIN` و `SYSTEM_OPERATOR` از `jetvam-backoffice` استفاده می‌شود. فرانت
+setting مربوط به 2FA را جداگانه نمی‌خواند؛ token endpoint بعد از اعتبارسنجی پسورد تصمیم می‌گیرد.
+
+setting سمت سرور:
+
+```text
+security.system-users.two-factor-required
+```
+
+### 7.1. درخواست اولیه ورود
 
 ```http
 POST /oauth2/token HTTP/1.1
@@ -110,10 +250,25 @@ Content-Type: application/x-www-form-urlencoded
 client_id=jetvam-backoffice&grant_type=urn%3Ajetvam%3Aparams%3Aoauth%3Agrant-type%3Apassword&username=operator&password=correct-password&scope=jetvam.api%20offline_access
 ```
 
-### 3. دریافت توکن با 2FA
+اگر 2FA خاموش باشد، همین درخواست پاسخ HTTP 200 و توکن‌ها را برمی‌گرداند. ورود در یک درخواست تمام
+می‌شود.
 
-اگر `secondFactorRequired=true` بود، فرانت باید کد OTP را از کاربر بگیرد و `challenge_id` و `otp`
-را با هم ارسال کند:
+اگر 2FA روشن باشد و پسورد معتبر باشد، OTP ارسال و پاسخ HTTP 400 زیر برگردانده می‌شود:
+
+```json
+{
+  "error": "second_factor_required",
+  "error_description": "A one-time password is required to complete authentication",
+  "challenge_id": "ef524cba-4021-474d-8d75-64be30b6e111",
+  "expires_at": "2026-09-24T17:35:00Z",
+  "resend_available_at": "2026-09-24T17:31:00Z"
+}
+```
+
+`second_factor_required` یک شکست ورود نیست؛ یک وضعیت میانی مورد انتظار است. فرانت باید صفحه OTP را
+نمایش دهد و `challenge_id` را نگه دارد.
+
+### 7.2. تکمیل ورود دومرحله‌ای
 
 ```http
 POST /oauth2/token HTTP/1.1
@@ -123,13 +278,21 @@ Content-Type: application/x-www-form-urlencoded
 client_id=jetvam-backoffice&grant_type=urn%3Ajetvam%3Aparams%3Aoauth%3Agrant-type%3Apassword&username=operator&password=correct-password&challenge_id=ef524cba-4021-474d-8d75-64be30b6e111&otp=123456&scope=jetvam.api%20offline_access
 ```
 
-تنظیم این گروه `security.system-users.two-factor-required` است.
+در درخواست دوم، `username` و `password` نیز دوباره ارسال می‌شوند. `challenge_id` و `otp` باید همیشه
+با هم وجود داشته باشند.
 
-## ورود ادمین یا اپراتور پذیرنده
+## 8. ورود ادمین و اپراتور پذیرنده
 
-جریان دقیقاً مانند کاربران جت‌وام است؛ فقط `client_id` باید `jetvam-merchant-portal` باشد. endpoint
-prepare همچنان `/api/v1/password-users/auth/prepare` است. تنظیم این گروه
-`security.merchant-users.two-factor-required` است.
+جریان دقیقاً مشابه بخش 7 است، با این تفاوت‌ها:
+
+| مورد | مقدار |
+| --- | --- |
+| `client_id` | `jetvam-merchant-portal` |
+| category | `MERCHANT` |
+| نقش‌ها | `MERCHANT_ADMIN` یا `MERCHANT_OPERATOR` |
+| setting مربوط به 2FA | `security.merchant-users.two-factor-required` |
+
+درخواست اولیه:
 
 ```http
 POST /oauth2/token HTTP/1.1
@@ -139,17 +302,41 @@ Content-Type: application/x-www-form-urlencoded
 client_id=jetvam-merchant-portal&grant_type=urn%3Ajetvam%3Aparams%3Aoauth%3Agrant-type%3Apassword&username=merchant.operator&password=correct-password&scope=jetvam.api%20offline_access
 ```
 
-در صورت نیاز به 2FA، همان `challenge_id` و `otp` مرحله قبل به فرم بالا اضافه می‌شوند.
+در صورت دریافت `second_factor_required`، همان درخواست با `challenge_id` و `otp` تکرار می‌شود.
 
-## استفاده و refresh توکن
+## 9. الگوریتم پیشنهادی فرانت برای ورود پسوردی
 
-توکن دسترسی در تمام APIهای محافظت‌شده به این شکل ارسال می‌شود:
-
-```http
-Authorization: Bearer <access_token>
+```text
+ارسال username/password به /oauth2/token
+                │
+                ├─ HTTP 200
+                │    └─ ذخیره امن توکن‌ها و ورود به پنل
+                │
+                ├─ error = second_factor_required
+                │    ├─ نگهداری موقت challenge_id
+                │    ├─ نمایش صفحه OTP
+                │    └─ تکرار /oauth2/token با challenge_id + otp
+                │
+                └─ سایر errorها
+                     └─ نمایش خطای مناسب و عدم ورود
 ```
 
-برای refresh، همان client مربوط به جریان ورود باید استفاده شود:
+نمونه TypeScript آماده در
+[`frontend-authentication-client.ts`](frontend-authentication-client.ts) قرار دارد.
+
+## 10. ارسال access token به APIها
+
+تمام APIهای محافظت‌شده باید header زیر را دریافت کنند:
+
+```http
+Authorization: Bearer <access-token>
+```
+
+کلاینت نباید access token را در query string، URL، log یا ابزار analytics قرار دهد.
+
+## 11. تمدید نشست با refresh token
+
+برای refresh باید دقیقاً همان `client_id` ورود اولیه استفاده شود.
 
 ```http
 POST /oauth2/token HTTP/1.1
@@ -159,45 +346,129 @@ Content-Type: application/x-www-form-urlencoded
 client_id=jetvam-backoffice&grant_type=refresh_token&refresh_token=<refresh-token>
 ```
 
-Refresh token چرخشی است. فرانت باید refresh token جدید پاسخ را جایگزین قبلی کند. نگهداری refresh
-token در `localStorage` ممنوع است؛ از secure platform storage یا session سمت BFF استفاده شود.
+نمونه برای مشتری فقط در `client_id` تفاوت دارد:
 
-JWT شامل claimهای `user_id`، `party_id`، `categories`، `roles`، `permissions` و `amr` است. فرانت
-می‌تواند نقش‌ها را برای نمایش UI استفاده کند، اما تصمیم امنیتی نهایی همیشه در backend انجام می‌شود.
-
-## خطاهای مهم برای فرانت
-
-- `invalid_grant`: پسورد، OTP، challenge یا وضعیت حساب معتبر نیست؛ پیام عمومی ورود ناموفق نمایش داده شود.
-- `invalid_request`: پارامتر لازم وجود ندارد یا `challenge_id` و `otp` با هم ارسال نشده‌اند.
-- `invalid_client` یا `unauthorized_client`: `client_id` با portal انتخاب‌شده سازگار نیست.
-- `invalid_scope`: scope خارج از `jetvam.api offline_access` درخواست شده است.
-
-## مجوز سمت سرویس
-
-هر عملیات محافظت‌شده باید هم role و هم permission را کنترل کند:
-
-```java
-@PreAuthorize("hasRole('CUSTOMER') and hasAuthority('profile:write:self')")
-@PreAuthorize("hasAnyRole('MERCHANT_ADMIN', 'MERCHANT_OPERATOR') and hasAuthority('merchant:read:self')")
-@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR') and hasAuthority('identity:user:read')")
+```text
+client_id=jetvam-portal
 ```
 
-permissionهای دارای `:self` به‌تنهایی مالکیت را اثبات نمی‌کنند. سرویس بیزینسی باید `partyId` کاربر
-را با مالک resource مقایسه کند یا merchant/branch boundary را در query اعمال کند.
+Refresh tokenها چرخشی هستند. بعد از refresh موفق:
 
-## مدیریت تنظیمات 2FA
+1. access token قبلی جایگزین شود.
+2. refresh token قبلی حذف شود.
+3. refresh token جدید پاسخ به‌صورت اتمیک ذخیره شود.
+4. اگر refresh ناموفق بود، یک بار دیگر با refresh token مصرف‌شده تلاش نشود و کاربر به صفحه ورود
+   هدایت شود.
 
-فقط `SYSTEM_ADMIN` دارای permission مناسب می‌تواند تنظیمات را بخواند یا تغییر دهد:
+برای جلوگیری از چند refresh هم‌زمان، کلاینت باید درخواست‌های refresh را single-flight کند؛ یعنی در
+هر لحظه فقط یک refresh فعال باشد و سایر درخواست‌ها منتظر نتیجه همان درخواست بمانند.
 
-```http
-GET /api/v1/settings
-Authorization: Bearer <system-admin-token>
+## 12. claimهای JWT
+
+access token علاوه بر claimهای استاندارد JWT شامل موارد زیر است:
+
+| claim | نمونه | کاربرد |
+| --- | --- | --- |
+| `user_id` | UUID | شناسه حساب کاربری |
+| `party_id` | UUID | شناسه شخص یا پذیرنده مالک حساب |
+| `categories` | `["OPERATOR"]` | context کسب‌وکاری حساب |
+| `roles` | `["SYSTEM_ADMIN"]` | نقش‌های کاربر |
+| `permissions` | `["identity:user:read"]` | مجوزهای ریزدانه |
+| `amr` | `["pwd"]` یا `["pwd","otp"]` | روش‌های استفاده‌شده برای ورود |
+
+در ورود مشتری مقدار `amr` شامل `otp` است. در ورود پسوردی تک‌مرحله‌ای `pwd` و در ورود دومرحله‌ای
+`pwd` و `otp` ثبت می‌شوند.
+
+فرانت می‌تواند role و permission را برای نمایش یا پنهان‌کردن اجزای UI استفاده کند، اما نباید آن‌ها
+را مبنای امنیت نهایی قرار دهد. مجوز نهایی همیشه در backend کنترل می‌شود.
+
+## 13. مدیریت خطاها
+
+### 13.1. خطاهای token endpoint
+
+| `error` | معنی | رفتار پیشنهادی فرانت |
+| --- | --- | --- |
+| `second_factor_required` | پسورد معتبر است و OTP لازم است | نمایش صفحه OTP با challenge پاسخ |
+| `invalid_grant` | پسورد، OTP، challenge یا وضعیت حساب معتبر نیست | پیام عمومی «اطلاعات ورود معتبر نیست» |
+| `invalid_request` | پارامتر لازم وجود ندارد یا پارامتر تکراری است | ثبت خطای فنی و اصلاح request کلاینت |
+| `invalid_client` | `client_id` معتبر یا مجاز نیست | توقف جریان و ثبت خطای پیکربندی |
+| `unauthorized_client` | کلاینت اجازه استفاده از grant را ندارد | توقف جریان و ثبت خطای پیکربندی |
+| `invalid_scope` | scope درخواستی مجاز نیست | استفاده از `jetvam.api offline_access` |
+| `temporarily_unavailable` | فعلاً امکان صدور OTP جدید نیست | غیرفعال‌کردن ارسال مجدد و تلاش بعدی |
+| `server_error` | خطای داخلی صادرکننده توکن | پیام موقت و ثبت correlation اطلاعات درخواست |
+
+برای جلوگیری از user enumeration، در خطای `invalid_grant` نباید به کاربر گفته شود username، پسورد،
+OTP یا وضعیت حساب دقیقاً کدام‌یک نامعتبر بوده است.
+
+### 13.2. خطاهای REST مربوط به OTP و ثبت‌نام
+
+endpointهای `/api/v1/**` از envelope عمومی API استفاده می‌کنند. کلاینت باید HTTP status و `error.code`
+را بررسی کند. وضعیت‌های مهم:
+
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "COMMON.VALIDATION_FAILED",
+    "message": "Request validation failed",
+    "violations": [],
+    "details": {}
+  },
+  "meta": {
+    "timestamp": "2026-09-24T17:32:00Z",
+    "requestId": "47eb65b1-d50c-4abe-9df5-3dc29cc567ec",
+    "traceId": "89a27bef79a0435fb34535903779051b"
+  }
+}
 ```
 
-```http
-PATCH /api/v1/settings/security.system-users.two-factor-required
-Authorization: Bearer <system-admin-token>
-Content-Type: application/json
+| HTTP status | معنی معمول |
+| --- | --- |
+| `400` | داده ورودی یا OTP نامعتبر |
+| `401` | access token وجود ندارد یا معتبر نیست |
+| `403` | کاربر authenticated است ولی permission لازم را ندارد |
+| `409` | حساب یا هویت متعارض/تکراری است |
+| `429` | محدودیت درخواست OTP رد شده است |
+| `500/503` | خطای موقت سرور یا سرویس بیرونی |
 
-{"value":"true"}
+## 14. نگهداری امن توکن و credential
+
+- پسورد و OTP هرگز در log، analytics، crash report یا error monitoring ثبت نشوند.
+- refresh token در `localStorage` نگهداری نشود.
+- در معماری وب ترجیحی، refresh token داخل session امن BFF یا cookie با ویژگی‌های `HttpOnly`،
+  `Secure` و `SameSite` مناسب نگهداری شود.
+- در موبایل از secure storage سیستم‌عامل استفاده شود.
+- access token فقط به دامنه‌های مورد اعتماد جت‌وام ارسال شود.
+- پاسخ `second_factor_required` و challenge نباید بین کاربران یا tabهای مختلف به اشتراک گذاشته شود.
+- با خروج کاربر، tokenها و تمام stateهای موقت شامل `challenge_id` از کلاینت پاک شوند.
+- کلاینت نباید ساعت محلی را منبع قطعی اعتبار token بداند؛ پاسخ 401 سرور باید مدیریت شود.
+
+## 15. چک‌لیست تحویل کلاینت
+
+- [ ] انتخاب `client_id` براساس پرتال، نه براساس حدس از username
+- [ ] ارسال token request با `application/x-www-form-urlencoded`
+- [ ] پشتیبانی از پاسخ `second_factor_required` به‌عنوان وضعیت میانی
+- [ ] ارسال هم‌زمان `challenge_id` و `otp`
+- [ ] استفاده از `expires_in` به‌جای TTL ثابت
+- [ ] refresh چرخشی و جایگزینی اتمیک refresh token
+- [ ] جلوگیری از refresh هم‌زمان
+- [ ] ارسال access token فقط در header استاندارد Authorization
+- [ ] عدم ذخیره credential یا token در log و analytics
+- [ ] عدم اتکا به roleهای سمت فرانت برای امنیت واقعی
+
+## 16. خلاصه بسیار کوتاه برای پیاده‌سازی
+
+```text
+مشتری:
+  POST /api/v1/customer/auth/otp
+  POST /oauth2/token با client_id=jetvam-portal و OTP_GRANT
+
+کاربر پنل جت‌وام:
+  POST /oauth2/token با client_id=jetvam-backoffice و PASSWORD_GRANT
+  اگر second_factor_required بود، همان request با challenge_id و otp تکرار شود
+
+کاربر پنل پذیرنده:
+  POST /oauth2/token با client_id=jetvam-merchant-portal و PASSWORD_GRANT
+  اگر second_factor_required بود، همان request با challenge_id و otp تکرار شود
 ```

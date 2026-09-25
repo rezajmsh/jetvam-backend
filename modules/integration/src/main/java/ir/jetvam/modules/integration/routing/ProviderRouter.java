@@ -42,6 +42,7 @@ public class ProviderRouter {
     ) {
         Preconditions.requireNonNull(command, "command");
         Preconditions.requireNonNull(resultType, "resultType");
+        ExternalCallTransactionGuard.assertNoActiveTransaction(capabilityCode);
         ProviderRouteView route = configurationService.getRoute(capabilityCode);
         List<ExternalProviderView> candidates = orderedCandidates(
                 route,

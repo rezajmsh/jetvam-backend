@@ -12,6 +12,16 @@ spring:
   jpa:
     open-in-view: false
 
+springdoc:
+  enable-default-api-docs: false
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+  group-configs:
+    - group: integration
+      display-name: External providers
+      paths-to-match: [/api/v1/integrations/**]
+
 server:
   port: ${JETVAM_SERVICES_PORT:8080}
   shutdown: graceful
@@ -48,7 +58,7 @@ jetvam:
   security:
     resource-server:
       enabled: true
-      public-paths: [/actuator/health/**, /actuator/info, /v3/api-docs/**, /swagger-ui/**]
+      public-paths: [/actuator/health/**, /actuator/info, /v3/api-docs/**, /swagger-ui/**, /swagger-ui.html]
   observability:
     enabled: true
     logging:
@@ -90,6 +100,10 @@ jetvam:
       metrics-enabled: true
       level: ${JETVAM_AUDIT_EVENT_LEVEL:INFO}
   web:
+    openapi:
+      title: Jetvam Services API
+      description: Jetvam business-module and integration administration APIs
+      version: v1
     response:
       envelope-enabled: true
       excluded-paths: [/actuator, /v3/api-docs, /swagger-ui]

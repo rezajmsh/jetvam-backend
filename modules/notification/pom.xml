@@ -7,7 +7,9 @@
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-common</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-persistence</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-observability</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-integration</artifactId></dependency>
         <dependency><groupId>org.springframework</groupId><artifactId>spring-context</artifactId></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-web</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-configuration-processor</artifactId><optional>true</optional></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-jackson</artifactId></dependency>

@@ -27,6 +27,19 @@ spring:
       org.quartz.jobStore.useProperties: true
       org.quartz.threadPool.threadCount: ${JETVAM_JOBS_THREAD_COUNT:10}
 
+springdoc:
+  enable-default-api-docs: false
+  swagger-ui:
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+  group-configs:
+    - group: jobs
+      display-name: Background jobs
+      paths-to-match: [/api/v1/jobs/**]
+    - group: integration
+      display-name: External providers
+      paths-to-match: [/api/v1/integrations/**]
+
 server:
   port: ${JETVAM_JOBS_PORT:8082}
   shutdown: graceful
@@ -59,7 +72,7 @@ jetvam:
   security:
     resource-server:
       enabled: true
-      public-paths: [/actuator/health/**, /actuator/info]
+      public-paths: [/actuator/health/**, /actuator/info, /v3/api-docs/**, /swagger-ui/**, /swagger-ui.html]
   observability:
     enabled: true
     logging:
@@ -137,6 +150,11 @@ jetvam:
     cache-name: i18n-messages
   jobs:
     enabled: true
+  web:
+    openapi:
+      title: Jetvam Jobs API
+      description: Background-job management and integration administration APIs
+      version: v1
   http-client:
     connect-timeout: ${JETVAM_HTTP_CONNECT_TIMEOUT:3s}
     read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}

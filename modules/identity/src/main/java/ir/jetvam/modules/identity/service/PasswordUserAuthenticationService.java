@@ -1,7 +1,5 @@
 package ir.jetvam.modules.identity.service;
 
-import ir.jetvam.modules.identity.security.IdentityUserPrincipal;
-
 import java.util.UUID;
 
 /**
@@ -12,9 +10,7 @@ import java.util.UUID;
  */
 public interface PasswordUserAuthenticationService {
 
-    PasswordLoginPreparation prepare(String username, String password);
-
-    IdentityUserPrincipal authenticate(
+    PasswordAuthenticationResult authenticate(
             String username,
             String password,
             UUID challengeId,

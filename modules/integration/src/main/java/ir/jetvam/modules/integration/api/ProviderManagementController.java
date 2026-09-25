@@ -1,5 +1,7 @@
 package ir.jetvam.modules.integration.api;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import ir.jetvam.modules.integration.http.DynamicProviderHttpClientFactory;
 import ir.jetvam.modules.integration.routing.ProviderCircuitRegistry;
 import ir.jetvam.modules.integration.routing.ProviderCircuitView;
@@ -37,6 +39,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/integrations")
 @RequiredArgsConstructor
+@Tag(name = "External providers", description = "Runtime routing, provider, circuit and TLS/mTLS administration.")
 public class ProviderManagementController {
 
     private final ProviderConfigurationService configurationService;
@@ -45,30 +48,35 @@ public class ProviderManagementController {
 
     @GetMapping("/routes")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR') and hasAuthority('integration:provider:read')")
+    @Operation(summary = "List provider routes", description = "Returns routing policy and any active manual override per capability.")
     public List<ProviderRouteView> routes() {
         return configurationService.findRoutes();
     }
 
     @GetMapping("/providers")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR') and hasAuthority('integration:provider:read')")
+    @Operation(summary = "List external providers", description = "Returns provider definitions, optionally filtered by capability.")
     public List<ExternalProviderView> providers(@RequestParam(required = false) String capability) {
         return configurationService.findProviders(capability);
     }
 
     @GetMapping("/tls-profiles")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR') and hasAuthority('integration:provider:read')")
+    @Operation(summary = "List TLS profiles", description = "Returns runtime trust-store, key-store and protocol configuration without secrets.")
     public List<TlsProfileView> tlsProfiles() {
         return configurationService.findTlsProfiles();
     }
 
     @GetMapping("/circuits")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR') and hasAuthority('integration:provider:read')")
+    @Operation(summary = "List provider circuits", description = "Returns in-memory failure and open-circuit state per capability and provider.")
     public List<ProviderCircuitView> circuits() {
         return circuitRegistry.snapshots();
     }
 
     @PutMapping("/routes/{capability}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') and hasAuthority('integration:provider:write')")
+    @Operation(summary = "Update a provider route", description = "Changes runtime routing, failover and circuit-breaker policy for a capability.")
     public ProviderRouteView updateRoute(
             @PathVariable String capability,
             @Valid @RequestBody UpdateProviderRouteRequest request
@@ -81,6 +89,7 @@ public class ProviderManagementController {
 
     @PutMapping("/routes/{capability}/override")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') and hasAuthority('integration:provider:override')")
+    @Operation(summary = "Set a manual provider override", description = "Pins a capability to one provider until the optional expiry time.")
     public ProviderRouteView setOverride(
             @PathVariable String capability,
             @Valid @RequestBody SetProviderOverrideRequest request
@@ -90,12 +99,14 @@ public class ProviderManagementController {
 
     @DeleteMapping("/routes/{capability}/override")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') and hasAuthority('integration:provider:override')")
+    @Operation(summary = "Clear a manual provider override", description = "Returns a capability to its configured automatic routing policy.")
     public ProviderRouteView clearOverride(@PathVariable String capability) {
         return configurationService.clearOverride(capability);
     }
 
     @PutMapping("/providers/{capability}/{provider}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') and hasAuthority('integration:provider:write')")
+    @Operation(summary = "Create or update a provider", description = "Changes an adapter, endpoint, authentication, TLS and timeout configuration at runtime.")
     public ExternalProviderView upsertProvider(
             @PathVariable String capability,
             @PathVariable String provider,
@@ -111,6 +122,7 @@ public class ProviderManagementController {
 
     @PutMapping("/tls-profiles/{profile}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') and hasAuthority('integration:provider:write')")
+    @Operation(summary = "Create or update a TLS profile", description = "Changes trust/key stores and protocols, then invalidates cached HTTP clients.")
     public TlsProfileView upsertTlsProfile(
             @PathVariable String profile,
             @Valid @RequestBody UpsertTlsProfileRequest request
@@ -127,6 +139,7 @@ public class ProviderManagementController {
     @PostMapping("/circuits/{capability}/{provider}/reset")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('SYSTEM_ADMIN') and hasAuthority('integration:provider:override')")
+    @Operation(summary = "Reset a provider circuit", description = "Clears accumulated failures so the provider can be selected immediately.")
     public void resetCircuit(@PathVariable String capability, @PathVariable String provider) {
         circuitRegistry.reset(capability, provider);
     }
@@ -134,6 +147,7 @@ public class ProviderManagementController {
     @PostMapping("/clients/reload")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasRole('SYSTEM_ADMIN') and hasAuthority('integration:provider:override')")
+    @Operation(summary = "Reload provider HTTP clients", description = "Invalidates all cached clients so changed TLS material and settings are re-read.")
     public void reloadClients() {
         clientFactory.invalidateAll();
     }

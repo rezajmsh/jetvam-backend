@@ -10,7 +10,6 @@ package ir.jetvam.modules.integration;
 public final class IntegrationCapabilities {
 
     public static final String SHAHKAR_VERIFY = "SHAHKAR_VERIFY";
-    public static final String SMS_SEND = "SMS_SEND";
 
     private IntegrationCapabilities() {
     }
