@@ -4,9 +4,9 @@ These rules apply to every current and future integration with an external syste
 
 ## Ownership
 
-- Business modules own or consume provider-neutral capability contracts; they must not create `RestClient`, TLS contexts or provider-specific request signatures.
-- `jetvam-module-integration` is the consumer-independent core for routing, failover, circuit state, authentication, TLS/mTLS and runtime provider configuration. It must never depend on a `jetvam-module-*` consumer.
-- A consumer module that invokes external providers depends on `jetvam-module-integration` and owns the adapters that map its canonical model to provider wire formats.
+- Business modules own provider-neutral capability contracts, commands, results and capability codes; business services must not create `RestClient`, TLS contexts or provider-specific request signatures.
+- `jetvam-module-integration` is the consumer-independent core for routing, failover, circuit state, authentication, TLS/mTLS and runtime provider configuration. It must contain no business capability or provider wire contract and must never depend on a `jetvam-module-*` consumer.
+- A business module that invokes external providers depends on `jetvam-module-integration` and owns the adapters that map its canonical model to provider wire formats. Shahkar, bad-cheque and credit-rating adapters therefore belong to Inquiry; SMS delivery belongs to Notification.
 - A provider-specific signature belongs in a consumer-owned adapter selected by `adapterCode`. Adding a provider must not add provider conditionals to business services or to the integration core.
 - Secrets are referenced through resolvers and are never stored as plaintext in provider definitions.
 - Provider, route and TLS changes must be reloadable at runtime without an application release.

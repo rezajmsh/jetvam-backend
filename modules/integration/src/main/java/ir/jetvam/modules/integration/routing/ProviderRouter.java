@@ -40,6 +40,15 @@ public class ProviderRouter {
             Class<R> resultType,
             boolean safeToFailoverAfterAmbiguousFailure
     ) {
+        return executeWithProvider(capabilityCode, command, resultType, safeToFailoverAfterAmbiguousFailure).result();
+    }
+
+    public <C, R> ProviderExecution<R> executeWithProvider(
+            String capabilityCode,
+            C command,
+            Class<R> resultType,
+            boolean safeToFailoverAfterAmbiguousFailure
+    ) {
         Preconditions.requireNonNull(command, "command");
         Preconditions.requireNonNull(resultType, "resultType");
         ExternalCallTransactionGuard.assertNoActiveTransaction(capabilityCode);
@@ -57,7 +66,7 @@ public class ProviderRouter {
             try {
                 R result = invoke(provider, command, resultType);
                 circuitRegistry.recordSuccess(route.capabilityCode(), provider.providerCode());
-                return result;
+                return new ProviderExecution<>(provider.providerCode(), result);
             } catch (ProviderInvocationException exception) {
                 lastFailure = exception;
                 if (!exception.isRetryable()) {
@@ -78,6 +87,38 @@ public class ProviderRouter {
             throw lastFailure;
         }
         throw new ProviderUnavailableException(route.capabilityCode());
+    }
+
+    public <C, R> R executeOnProvider(
+            String capabilityCode,
+            String providerCode,
+            C command,
+            Class<R> resultType
+    ) {
+        Preconditions.requireText(providerCode, "providerCode");
+        Preconditions.requireNonNull(command, "command");
+        Preconditions.requireNonNull(resultType, "resultType");
+        ExternalCallTransactionGuard.assertNoActiveTransaction(capabilityCode);
+        ProviderRouteView route = configurationService.getRoute(capabilityCode);
+        ExternalProviderView provider = configurationService.findEnabledProviders(capabilityCode).stream()
+                .filter(candidate -> candidate.providerCode().equals(providerCode))
+                .findFirst()
+                .orElseThrow(() -> new ProviderUnavailableException(capabilityCode));
+        if (!circuitRegistry.tryAcquire(capabilityCode, providerCode)) {
+            throw new ProviderUnavailableException(capabilityCode);
+        }
+        try {
+            R result = invoke(provider, command, resultType);
+            circuitRegistry.recordSuccess(capabilityCode, providerCode);
+            return result;
+        } catch (ProviderInvocationException exception) {
+            if (exception.isRetryable()) {
+                circuitRegistry.recordFailure(
+                        capabilityCode, providerCode, route.failureThreshold(), route.openDurationSeconds()
+                );
+            }
+            throw exception;
+        }
     }
 
     @SuppressWarnings("unchecked")

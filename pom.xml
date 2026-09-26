@@ -166,6 +166,11 @@
                 <artifactId>jetvam-module-integration</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>ir.jetvam</groupId>
+                <artifactId>jetvam-module-inquiry</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <!-- Third-party dependencies -->
             <dependency>
                 <groupId>com.github.mfathi91</groupId>

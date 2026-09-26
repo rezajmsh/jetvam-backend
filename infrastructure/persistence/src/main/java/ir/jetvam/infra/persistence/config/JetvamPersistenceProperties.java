@@ -112,6 +112,7 @@ public class JetvamPersistenceProperties {
         private String baselineVersion = "0";
         private boolean validateOnMigrate = true;
         private boolean validateMigrationNaming = true;
+        private List<String> ignoreMigrationPatterns = List.of();
         private boolean outOfOrder;
         private int lockRetryCount = 50;
 

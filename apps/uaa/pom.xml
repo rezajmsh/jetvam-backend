@@ -13,6 +13,7 @@
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-observability</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-http-client</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-identity</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-inquiry</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-otp</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-settings</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-notification</artifactId></dependency>

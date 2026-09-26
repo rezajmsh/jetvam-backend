@@ -17,6 +17,7 @@ import org.springframework.boot.hibernate.autoconfigure.HibernatePropertiesCusto
 import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Bean;
+import org.springframework.util.ClassUtils;
 import org.springframework.util.StringUtils;
 
 import javax.sql.DataSource;
@@ -37,6 +38,11 @@ import java.util.Properties;
 @EnableConfigurationProperties(JetvamPersistenceProperties.class)
 @EntityScan(basePackages = "ir.jetvam")
 public class JetvamPersistenceAutoConfiguration {
+
+    private static final String REPOSITORY_STATEMENT_INSPECTOR =
+            "ir.jetvam.infra.observability.repository.RepositoryStatementInspector";
+    private static final String REPOSITORY_SESSION_EVENT_LISTENER =
+            "ir.jetvam.infra.observability.repository.RepositorySessionEventListener";
 
     @Bean(destroyMethod = "close")
     @ConditionalOnMissingBean(DataSource.class)
@@ -103,6 +109,11 @@ public class JetvamPersistenceAutoConfiguration {
                 .outOfOrder(migration.isOutOfOrder())
                 .lockRetryCount(migration.getLockRetryCount())
                 .cleanDisabled(true);
+        if (!migration.getIgnoreMigrationPatterns().isEmpty()) {
+            configuration.ignoreMigrationPatterns(
+                    migration.getIgnoreMigrationPatterns().toArray(String[]::new)
+            );
+        }
         return configuration.load();
     }
 
@@ -141,6 +152,10 @@ public class JetvamPersistenceAutoConfiguration {
         hibernate.put("hibernate.jdbc.batch_size", jpa.getJdbcBatchSize());
         hibernate.put("hibernate.order_inserts", jpa.isOrderInserts());
         hibernate.put("hibernate.order_updates", jpa.isOrderUpdates());
+        if (ClassUtils.isPresent(REPOSITORY_STATEMENT_INSPECTOR, JetvamPersistenceAutoConfiguration.class.getClassLoader())) {
+            hibernate.putIfAbsent("hibernate.session_factory.statement_inspector", REPOSITORY_STATEMENT_INSPECTOR);
+            hibernate.putIfAbsent("hibernate.session.events.auto", REPOSITORY_SESSION_EVENT_LISTENER);
+        }
         hibernate.putAll(jpa.getProperties());
     }
 }

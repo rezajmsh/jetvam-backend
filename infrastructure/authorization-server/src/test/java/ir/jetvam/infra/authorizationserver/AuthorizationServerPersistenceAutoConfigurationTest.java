@@ -3,12 +3,16 @@ package ir.jetvam.infra.authorizationserver;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.boot.jdbc.autoconfigure.JdbcTemplateAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+
+import javax.sql.DataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -23,7 +27,10 @@ import static org.mockito.Mockito.mock;
 class AuthorizationServerPersistenceAutoConfigurationTest {
 
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-            .withConfiguration(AutoConfigurations.of(AuthorizationServerPersistenceAutoConfiguration.class))
+            .withConfiguration(AutoConfigurations.of(
+                    JdbcTemplateAutoConfiguration.class,
+                    AuthorizationServerPersistenceAutoConfiguration.class
+            ))
             .withUserConfiguration(RequiredBeans.class);
 
     @Test
@@ -55,8 +62,12 @@ class AuthorizationServerPersistenceAutoConfigurationTest {
     static class RequiredBeans {
 
         @Bean
-        JdbcOperations jdbcOperations() {
-            return mock(JdbcOperations.class);
+        DataSource dataSource() {
+            return new EmbeddedDatabaseBuilder()
+                    .setType(EmbeddedDatabaseType.H2)
+                    .addScript("org/springframework/security/oauth2/server/authorization/oauth2-authorization-schema.sql")
+                    .addScript("org/springframework/security/oauth2/server/authorization/oauth2-authorization-consent-schema.sql")
+                    .build();
         }
 
         @Bean

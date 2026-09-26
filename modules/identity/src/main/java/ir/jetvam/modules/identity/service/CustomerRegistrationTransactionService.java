@@ -16,7 +16,7 @@ import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.RoleRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
-import ir.jetvam.modules.integration.shahkar.ShahkarVerification;
+import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.otp.service.OtpChallengeService;
 import ir.jetvam.modules.otp.service.OtpVerificationData;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +55,7 @@ public class CustomerRegistrationTransactionService {
     @Transactional(noRollbackFor = ValidationException.class)
     public CustomerRegistrationCompletion complete(
             VerifyCustomerRegistrationCommand command,
-            ShahkarVerification shahkar
+            InquiryResults.MobileOwnership ownership
     ) {
         OtpVerificationData verified = otpChallengeService.consumeAtomically(
                 command.challengeId(),
@@ -69,11 +69,11 @@ public class CustomerRegistrationTransactionService {
 
         individual.markMobileVerified(timeProvider.now());
         individual.markShahkarPending();
-        if (!shahkar.matched()) {
-            individual.markShahkarNotMatched(shahkar.trackingId());
+        if (!ownership.matched()) {
+            individual.markShahkarNotMatched(ownership.trackingId());
             return CustomerRegistrationCompletion.rejected();
         }
-        individual.markShahkarMatched(timeProvider.now(), shahkar.trackingId());
+        individual.markShahkarMatched(timeProvider.now(), ownership.trackingId());
         individual.markIdentityVerified(timeProvider.now());
 
         CustomerProfileEntity profile = customerProfileRepository.findByPartyId(individual.getId())

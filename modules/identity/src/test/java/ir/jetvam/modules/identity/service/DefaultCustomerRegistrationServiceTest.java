@@ -1,21 +1,15 @@
 package ir.jetvam.modules.identity.service;
 
-import ir.jetvam.common.time.ClockTimeProvider;
 import ir.jetvam.modules.identity.IdentityOtpPurposes;
 import ir.jetvam.modules.identity.model.CustomerOnboardingStatus;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
-import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
-import ir.jetvam.modules.identity.repository.UserAccountRepository;
-import ir.jetvam.modules.integration.shahkar.ShahkarProvider;
-import ir.jetvam.modules.integration.shahkar.ShahkarVerification;
+import ir.jetvam.modules.inquiry.service.InquiryRequests;
+import ir.jetvam.modules.inquiry.service.InquiryResults;
+import ir.jetvam.modules.inquiry.service.InquiryService;
 import ir.jetvam.modules.otp.service.OtpChallengeService;
 import ir.jetvam.modules.otp.service.OtpVerificationData;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,10 +32,10 @@ class DefaultCustomerRegistrationServiceTest {
         UUID partyId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         OtpChallengeService otpService = mock(OtpChallengeService.class);
-        ShahkarProvider shahkarProvider = mock(ShahkarProvider.class);
+        InquiryService inquiryService = mock(InquiryService.class);
         CustomerRegistrationTransactionService transactions = mock(CustomerRegistrationTransactionService.class);
         OtpVerificationData verified = new OtpVerificationData("09121234567", "1234567890");
-        ShahkarVerification shahkar = new ShahkarVerification(true, "tracking-1");
+        InquiryResults.MobileOwnership ownership = new InquiryResults.MobileOwnership(true, "tracking-1");
         CustomerRegistrationResult expected = new CustomerRegistrationResult(
                 userId,
                 partyId,
@@ -51,30 +45,30 @@ class DefaultCustomerRegistrationServiceTest {
 
         when(otpService.verify(challengeId, "123456", IdentityOtpPurposes.CUSTOMER_REGISTRATION))
                 .thenReturn(verified);
-        when(shahkarProvider.verify(verified.mobile(), verified.nationalCode())).thenReturn(shahkar);
-        when(transactions.complete(command, shahkar))
+        when(inquiryService.verifyMobileOwnership(new InquiryRequests.MobileOwnership(
+                verified.mobile(), verified.nationalCode()
+        ))).thenReturn(ownership);
+        when(transactions.complete(command, ownership))
                 .thenReturn(CustomerRegistrationCompletion.accepted(expected));
 
         var service = new DefaultCustomerRegistrationService(
                 otpService,
-                shahkarProvider,
-                transactions,
-                mock(IndividualPartyRepository.class),
-                mock(UserAccountRepository.class),
-                mock(CustomerProfileRepository.class),
-                new ClockTimeProvider(Clock.fixed(Instant.parse("2026-09-22T03:30:00Z"), ZoneOffset.UTC))
+                inquiryService,
+                transactions
         );
         CustomerRegistrationResult result = service.verifyOtp(command);
 
         assertThat(result).isEqualTo(expected);
-        InOrder order = inOrder(otpService, transactions, shahkarProvider);
+        InOrder order = inOrder(otpService, transactions, inquiryService);
         order.verify(otpService).verify(
                 challengeId,
                 "123456",
                 IdentityOtpPurposes.CUSTOMER_REGISTRATION
         );
         order.verify(transactions).assertRegistrationAvailable(verified.mobile(), verified.nationalCode());
-        order.verify(shahkarProvider).verify(verified.mobile(), verified.nationalCode());
-        order.verify(transactions).complete(command, shahkar);
+        order.verify(inquiryService).verifyMobileOwnership(new InquiryRequests.MobileOwnership(
+                verified.mobile(), verified.nationalCode()
+        ));
+        order.verify(transactions).complete(command, ownership);
     }
 }

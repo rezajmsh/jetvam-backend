@@ -50,4 +50,29 @@ class HttpServerObservabilityFilterTest {
                 .tag("status", "200")
                 .timer()).isNotNull();
     }
+
+    @Test
+    void usesDiagnosticRouteWhenSecurityFinishesBeforeMvcRouting() throws Exception {
+        SimpleMeterRegistry registry = new SimpleMeterRegistry();
+        DefaultListableBeanFactory beanFactory = new DefaultListableBeanFactory();
+        beanFactory.registerSingleton("meterRegistry", registry);
+        var metrics = new InfrastructureMetrics(beanFactory.getBeanProvider(MeterRegistry.class));
+        var properties = new JetvamObservabilityProperties();
+        properties.getLogging().setEnabled(false);
+        var filter = new HttpServerObservabilityFilter(properties, new OtelEventLogger(), metrics);
+        var request = new MockHttpServletRequest("POST", "/oauth2/token");
+        var response = new MockHttpServletResponse();
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {
+            servletRequest.setAttribute(WebRequestAttributes.ROUTE, "/oauth2/token");
+            servletRequest.setAttribute(WebRequestAttributes.OAUTH2_ERROR_CODE, "invalid_client");
+            ((MockHttpServletResponse) servletResponse).setStatus(401);
+        });
+
+        assertThat(registry.find("http.server.request.duration")
+                .tag("route", "/oauth2/token")
+                .tag("status", "401")
+                .tag("outcome", "client_error")
+                .timer()).isNotNull();
+    }
 }

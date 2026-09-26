@@ -7,6 +7,7 @@ import org.springframework.boot.logging.structured.StructuredLogFormatter;
 import org.springframework.core.env.Environment;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -117,9 +118,30 @@ public final class OtelStructuredLogFormatter implements StructuredLogFormatter<
     private static void value(StringBuilder json, Object value) {
         if (value instanceof Number || value instanceof Boolean) {
             json.append(value);
+        } else if (value instanceof Map<?, ?> map) {
+            object(json, map.entrySet().stream().collect(
+                    LinkedHashMap::new,
+                    (values, entry) -> values.put(String.valueOf(entry.getKey()), entry.getValue()),
+                    Map::putAll
+            ));
+        } else if (value instanceof Iterable<?> iterable) {
+            array(json, iterable);
         } else {
             string(json, String.valueOf(value));
         }
+    }
+
+    private static void array(StringBuilder json, Iterable<?> values) {
+        json.append('[');
+        boolean first = true;
+        for (Object value : values) {
+            if (!first) {
+                json.append(',');
+            }
+            value(json, value);
+            first = false;
+        }
+        json.append(']');
     }
 
     private static void member(StringBuilder json, String name, String value) {

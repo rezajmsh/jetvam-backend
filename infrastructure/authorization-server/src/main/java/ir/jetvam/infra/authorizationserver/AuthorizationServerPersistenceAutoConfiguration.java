@@ -5,6 +5,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.jdbc.autoconfigure.JdbcTemplateAutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
@@ -20,7 +21,7 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
  * @author reza jamshidi
  * @since 9/22/2026
  */
-@AutoConfiguration
+@AutoConfiguration(after = JdbcTemplateAutoConfiguration.class)
 @ConditionalOnClass(JdbcOAuth2AuthorizationService.class)
 @ConditionalOnProperty(prefix = "jetvam.security.authorization-server", name = "enabled", havingValue = "true")
 @ConditionalOnBean({JdbcOperations.class, RegisteredClientRepository.class})

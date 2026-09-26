@@ -16,7 +16,9 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Measures and traces Spring Data repository method executions.
@@ -44,12 +46,17 @@ public class RepositoryObservabilityAspect {
         var settings = properties.getRepository();
         long startedAt = System.nanoTime();
         String outcome = "success";
+        Throwable failure = null;
+        RepositoryTelemetryContext.Scope telemetryScope = RepositoryTelemetryContext.open();
+        RepositoryTelemetryContext.Snapshot telemetry = RepositoryTelemetryContext.Snapshot.empty();
 
         Span span = settings.isTracingEnabled()
                 ? tracer.nextSpan()
-                        .name("repository.operation")
+                        .name("repository." + repository + "." + operation)
                         .tag("repository.name", repository)
                         .tag("repository.operation", operation)
+                        .tag("code.namespace", joinPoint.getSignature().getDeclaringTypeName())
+                        .tag("code.function.name", operation)
                         .start()
                 : null;
 
@@ -57,22 +64,41 @@ public class RepositoryObservabilityAspect {
             return joinPoint.proceed();
         } catch (Throwable throwable) {
             outcome = "error";
+            failure = throwable;
             if (span != null) {
                 span.error(throwable);
             }
             throw throwable;
         } finally {
+            telemetry = telemetryScope.finish();
             if (span != null) {
                 span.end();
             }
-            record(repository, operation, outcome, Duration.ofNanos(System.nanoTime() - startedAt));
+            record(
+                    joinPoint.getSignature().getDeclaringTypeName(),
+                    repository,
+                    operation,
+                    outcome,
+                    failure,
+                    telemetry,
+                    Duration.ofNanos(System.nanoTime() - startedAt)
+            );
         }
     }
 
-    private void record(String repository, String operation, String outcome, Duration duration) {
+    private void record(
+            String namespace,
+            String repository,
+            String operation,
+            String outcome,
+            Throwable failure,
+            RepositoryTelemetryContext.Snapshot telemetry,
+            Duration duration
+    ) {
         var settings = properties.getRepository();
         boolean slow = duration.compareTo(settings.getSlowThreshold()) >= 0;
-        if (settings.isLoggingEnabled() && properties.getLogging().isEnabled()) {
+        boolean shouldLog = failure != null || slow || settings.isLogSuccessfulOperations();
+        if (shouldLog && settings.isLoggingEnabled() && properties.getLogging().isEnabled()) {
             Level level = "error".equals(outcome) || slow ? Level.WARN : properties.getLogging().getLevel();
             eventLogger.log(
                     LOGGER,
@@ -81,12 +107,27 @@ public class RepositoryObservabilityAspect {
                     OtelEventType.REPOSITORY_OPERATION,
                     "Repository operation completed",
                     eventLogger.attributes(
+                            "event.phase", "end",
+                            "span.kind", "internal",
+                            "code.namespace", namespace,
+                            "code.function.name", operation,
                             "repository.name", repository,
                             "repository.operation", operation,
                             "operation.outcome", outcome,
                             "operation.slow", slow,
+                            "db.connection.acquire.count", telemetry.connectionAcquisitionCount(),
+                            "db.connection.acquire.duration_ms", millis(telemetry.connectionAcquisitionDuration()),
+                            "db.connection.reused",
+                            telemetry.queryCount() > 0 && telemetry.connectionAcquisitionCount() == 0,
+                            "db.statement.prepare.duration_ms", millis(telemetry.statementPreparationDuration()),
+                            "db.statement.execute.duration_ms", millis(telemetry.statementExecutionDuration()),
+                            "db.query.count", telemetry.queryCount(),
+                            "db.query.captured_count", telemetry.queries().size(),
+                            "db.query.truncated", telemetry.queriesTruncated(),
+                            "db.queries", queries(telemetry),
                             "duration_ms", duration.toNanos() / 1_000_000.0
-                    )
+                    ),
+                    failure
             );
         }
         if (settings.isMetricsEnabled() && properties.getMetrics().isEnabled()) {
@@ -96,5 +137,20 @@ public class RepositoryObservabilityAspect {
                     Tag.of("outcome", outcome)
             ));
         }
+    }
+
+    private static List<Map<String, Object>> queries(RepositoryTelemetryContext.Snapshot telemetry) {
+        return telemetry.queries().stream().map(query -> {
+            Map<String, Object> attributes = new LinkedHashMap<>();
+            attributes.put("text", query.text());
+            attributes.put("text_truncated", query.textTruncated());
+            attributes.put("prepare_duration_ms", millis(query.preparationDuration()));
+            attributes.put("execute_duration_ms", millis(query.executionDuration()));
+            return attributes;
+        }).toList();
+    }
+
+    private static double millis(Duration duration) {
+        return duration.toNanos() / 1_000_000.0;
     }
 }

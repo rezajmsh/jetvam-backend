@@ -28,6 +28,12 @@ The observed loan journey includes:
 10. electronic signature, selfie/photo and video identity evidence;
 11. credit allocation.
 
+The selectable item shown during facility selection is a plan within a broader product family. The current journey demonstrates that rules differ by selected plan: some controls need external inquiries, some plans require a guarantor or Sayad cheque, and charges can originate from an inquiry or from a plan attachment such as Jet Club membership. The implemented Product baseline therefore keeps control, inquiry-source, guarantee, collateral and fee rules configurable per plan instead of treating the observed journey as one global workflow.
+
+Plan eligibility controls are also configurable. Age is evaluated from the authoritative birth date without an external call; minimum credit rank first obtains a normalized credit-rating inquiry; and the no-bad-cheque control first obtains a bad-cheque inquiry. Inquiry supplies facts and Assessment makes the Plan-specific decision.
+
+Origination persists the current journey as an application state machine rather than a synchronous HTTP chain. Every enabled Plan Control is snapshotted with a status when the application is created. Controls execute in strict priority order and stop at the first failure, so later provider work and cost are not incurred. Local controls such as age are evaluated immediately; an Inquiry-backed Control submits an asynchronous request only when it reaches the front of the queue. A generic job asks Inquiry to submit or poll provider work, including providers that first return a tracking code and expose the result minutes later. Inquiry durably delivers terminal facts through a configured callback transport; Origination's idempotent callback evaluates the correlated Control and releases the next priority only after success. After eligibility succeeds, the customer supplies any missing reusable personal and employment profile sections plus application-specific guarantee information, pays intrinsic Plan/application fees, delivers any required original cheque, signs the contract and waits for operational credit allocation. Identity owns those reusable profile sections; Origination retains only the section revisions consumed by an application.
+
 The identity implications for the current release are:
 
 - a customer always authenticates with a mobile OTP;

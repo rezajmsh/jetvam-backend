@@ -42,18 +42,23 @@ logging:
     jetvam.notification.delivery: ${JETVAM_NOTIFICATION_LOG_LEVEL:INFO}
     jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
     jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${JETVAM_HIBERNATE_SQL_LOG_LEVEL:OFF}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+  otlp:
+    metrics:
+      export:
+        enabled: false
   tracing:
     sampling:
       probability: ${JETVAM_TRACING_SAMPLING_PROBABILITY:1.0}
     export:
       otlp:
-        enabled: ${JETVAM_OTEL_TRACES_EXPORT_ENABLED:false}
+        enabled: false
   opentelemetry:
     enabled: ${JETVAM_OTEL_ENABLED:true}
     resource-attributes:
@@ -62,6 +67,9 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
+  identity:
+    profile-api:
+      enabled: false
   security:
     resource-server:
       enabled: false
@@ -90,13 +98,13 @@ jetvam:
     rate-limit-window: ${JETVAM_OTP_RATE_LIMIT_WINDOW:1h}
     max-attempts: ${JETVAM_OTP_MAX_ATTEMPTS:5}
     max-challenges-per-window: ${JETVAM_OTP_MAX_CHALLENGES_PER_WINDOW:5}
-    hmac-secret: ${JETVAM_OTP_HMAC_SECRET:}
+    hmac-secret: ${JETVAM_OTP_HMAC_SECRET:ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEF}
   http-client:
     connect-timeout: ${JETVAM_HTTP_CONNECT_TIMEOUT:3s}
     read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}
   notification:
     outbox:
-      encryption-key-base64: ${JETVAM_NOTIFICATION_ENCRYPTION_KEY_BASE64:}
+      encryption-key-base64: ${JETVAM_NOTIFICATION_ENCRYPTION_KEY_BASE64:amV0dmFtLWxvY2FsLW5vdGlmaWNhdGlvbi1rZXktMDE=}
       max-attempts: ${JETVAM_NOTIFICATION_MAX_ATTEMPTS:5}
       initial-retry-delay: ${JETVAM_NOTIFICATION_INITIAL_RETRY_DELAY:2s}
       maximum-retry-delay: ${JETVAM_NOTIFICATION_MAX_RETRY_DELAY:1m}
@@ -134,12 +142,14 @@ jetvam:
     repository:
       enabled: true
       logging-enabled: true
+      log-successful-operations: ${JETVAM_REPOSITORY_LOG_SUCCESSES:true}
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
     jdbc:
       enabled: true
       logging-enabled: true
+      log-successful-operations: ${JETVAM_JDBC_LOG_SUCCESSES:false}
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_JDBC_SLOW_THRESHOLD:500ms}
@@ -173,7 +183,7 @@ jetvam:
       idle-timeout: 10m
       max-lifetime: 30m
     jpa:
-      ddl-auto: validate
+      ddl-auto: none
       show-sql: ${JETVAM_JPA_SHOW_SQL:false}
       format-sql: ${JETVAM_JPA_FORMAT_SQL:false}
       jdbc-time-zone: UTC
@@ -181,7 +191,7 @@ jetvam:
     migration:
       enabled: true
       locations: classpath:db/migration
-      validate-on-migrate: true
+      validate-on-migrate: false
   cache:
     enabled: true
     provider: ${JETVAM_CACHE_PROVIDER:local}

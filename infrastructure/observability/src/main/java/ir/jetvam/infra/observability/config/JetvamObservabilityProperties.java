@@ -140,6 +140,7 @@ public class JetvamObservabilityProperties {
     public static class Repository {
         private boolean enabled = true;
         private boolean loggingEnabled = true;
+        private boolean logSuccessfulOperations = true;
         private boolean metricsEnabled = true;
         private boolean tracingEnabled = true;
         private Duration slowThreshold = Duration.ofMillis(500);
@@ -157,6 +158,7 @@ public class JetvamObservabilityProperties {
     public static class Jdbc {
         private boolean enabled = true;
         private boolean loggingEnabled = true;
+        private boolean logSuccessfulOperations = false;
         private boolean metricsEnabled = true;
         private boolean tracingEnabled = true;
         private Duration slowThreshold = Duration.ofMillis(500);

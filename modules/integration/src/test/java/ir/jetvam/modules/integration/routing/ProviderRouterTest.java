@@ -99,6 +99,23 @@ class ProviderRouterTest {
                 .hasMessageContaining("READ_TIMEOUT");
     }
 
+    @Test
+    void returnsSelectedProviderAndPinsAStatefulFollowUp() {
+        doReturn(new TestAdapter("ADAPTER_A", value -> value + "-first"))
+                .when(adapterRegistry).get("TEST", "ADAPTER_A");
+        doReturn(new TestAdapter("ADAPTER_B", value -> value + "-second"))
+                .when(adapterRegistry).get("TEST", "ADAPTER_B");
+
+        ProviderExecution<String> submitted = router.executeWithProvider(
+                "TEST", "request", String.class, true
+        );
+        String polled = router.executeOnProvider("TEST", "SECOND", "tracking", String.class);
+
+        assertThat(submitted.providerCode()).isEqualTo("FIRST");
+        assertThat(submitted.result()).isEqualTo("request-first");
+        assertThat(polled).isEqualTo("tracking-second");
+    }
+
     private static ExternalProviderView provider(String providerCode, String adapterCode, int priority) {
         return new ExternalProviderView(
                 "TEST", providerCode, adapterCode, true, priority, 1, "https://provider.test", "/call",

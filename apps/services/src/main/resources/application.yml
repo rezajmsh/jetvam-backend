@@ -21,6 +21,27 @@ springdoc:
     - group: integration
       display-name: External providers
       paths-to-match: [/api/v1/integrations/**]
+    - group: product-administration
+      display-name: Product administration
+      paths-to-match: [/api/v1/admin/products/**]
+    - group: product-catalog
+      display-name: Product catalog
+      paths-to-match: [/api/v1/catalog/products/**]
+    - group: customer-profile
+      display-name: Customer profile
+      paths-to-match: [/api/v1/customer/profile/**]
+    - group: inquiries
+      display-name: Inquiries
+      paths-to-match: [/api/v1/inquiries/**]
+    - group: plan-assessment
+      display-name: Plan assessment
+      paths-to-match: [/api/v1/assessments/**]
+    - group: origination
+      display-name: Loan origination
+      paths-to-match: [/api/v1/origination/**]
+    - group: payments
+      display-name: Payments
+      paths-to-match: [/api/v1/payments/**]
 
 server:
   port: ${JETVAM_SERVICES_PORT:8080}
@@ -35,18 +56,23 @@ logging:
     jetvam.http.client: ${JETVAM_HTTP_LOG_LEVEL:INFO}
     jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
     jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${JETVAM_HIBERNATE_SQL_LOG_LEVEL:OFF}
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,prometheus
+  otlp:
+    metrics:
+      export:
+        enabled: false
   tracing:
     sampling:
       probability: ${JETVAM_TRACING_SAMPLING_PROBABILITY:1.0}
     export:
       otlp:
-        enabled: ${JETVAM_OTEL_TRACES_EXPORT_ENABLED:false}
+        enabled: false
   opentelemetry:
     enabled: ${JETVAM_OTEL_ENABLED:true}
     resource-attributes:
@@ -55,6 +81,24 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
+  identity:
+    profile-api:
+      enabled: true
+  inquiry:
+    api:
+      enabled: true
+  product:
+    api:
+      enabled: true
+  assessment:
+    api:
+      enabled: true
+  payment:
+    api:
+      enabled: true
+  origination:
+    api:
+      enabled: true
   security:
     resource-server:
       enabled: true
@@ -86,12 +130,14 @@ jetvam:
     repository:
       enabled: true
       logging-enabled: true
+      log-successful-operations: ${JETVAM_REPOSITORY_LOG_SUCCESSES:true}
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
     jdbc:
       enabled: true
       logging-enabled: true
+      log-successful-operations: ${JETVAM_JDBC_LOG_SUCCESSES:false}
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_JDBC_SLOW_THRESHOLD:500ms}
@@ -134,6 +180,7 @@ jetvam:
       enabled: true
       locations: classpath:db/migration
       validate-on-migrate: true
+      ignore-migration-patterns: [ "*:missing" ]
   cache:
     enabled: true
     provider: ${JETVAM_CACHE_PROVIDER:local}

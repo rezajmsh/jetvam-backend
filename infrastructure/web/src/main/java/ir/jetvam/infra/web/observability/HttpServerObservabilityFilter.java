@@ -83,6 +83,8 @@ public class HttpServerObservabilityFilter extends OncePerRequestFilter {
             return;
         }
         Map<String, Object> attributes = baseAttributes(request);
+        attributes.put("event.phase", "start");
+        attributes.put("span.kind", "server");
         attributes.put("http.request.body.size", Math.max(request.getContentLengthLong(), 0));
         for (String header : settings.getRequestHeaderAllowList()) {
             String value = request.getHeader(header);
@@ -111,19 +113,30 @@ public class HttpServerObservabilityFilter extends OncePerRequestFilter {
             return;
         }
         Map<String, Object> attributes = baseAttributes(request);
+        attributes.put("event.phase", "end");
+        attributes.put("span.kind", "server");
         attributes.put("http.route", route(request));
         attributes.put("http.response.status_code", response.getStatus());
         contentLength(response).ifPresent(length -> attributes.put("http.response.body.size", length));
         attributes.put("duration_ms", duration.toNanos() / 1_000_000.0);
         attributes.put("operation.outcome", outcome(response.getStatus(), failure));
+        copyRequestAttribute(attributes, request, WebRequestAttributes.OAUTH2_ERROR_CODE, "oauth2.error.code");
+        copyRequestAttribute(attributes, request, WebRequestAttributes.OAUTH2_GRANT_TYPE, "oauth2.grant.type");
+        copyRequestAttribute(attributes, request, WebRequestAttributes.OAUTH2_CLIENT_ID, "oauth2.client.id");
+        copyRequestAttribute(
+                attributes,
+                request,
+                WebRequestAttributes.OAUTH2_CLIENT_AUTHENTICATION_METHOD,
+                "oauth2.client.authentication_method"
+        );
+        copyRequestAttribute(attributes, request, WebRequestAttributes.ERROR_TYPE, "error.type");
+        copyRequestAttribute(attributes, request, WebRequestAttributes.ERROR_MESSAGE, "error.message");
         if (failure != null) {
             attributes.put("error.type", failure.getClass().getName());
         }
         eventLogger.log(
                 LOGGER,
-                failure == null && response.getStatus() < 500
-                        ? properties.getLogging().getLevel()
-                        : org.slf4j.event.Level.ERROR,
+                responseLogLevel(request, response, failure),
                 "http.server.request.completed",
                 OtelEventType.HTTP_SERVER_REQUEST,
                 "HTTP request completed",
@@ -181,7 +194,37 @@ public class HttpServerObservabilityFilter extends OncePerRequestFilter {
 
     private static String route(HttpServletRequest request) {
         Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-        return pattern == null ? "UNKNOWN" : pattern.toString();
+        if (pattern != null) {
+            return pattern.toString();
+        }
+        Object diagnosticRoute = request.getAttribute(WebRequestAttributes.ROUTE);
+        return diagnosticRoute == null ? "UNKNOWN" : diagnosticRoute.toString();
+    }
+
+    private org.slf4j.event.Level responseLogLevel(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Throwable failure
+    ) {
+        if (failure != null || response.getStatus() >= 500) {
+            return org.slf4j.event.Level.ERROR;
+        }
+        if (request.getAttribute(WebRequestAttributes.OAUTH2_ERROR_CODE) != null) {
+            return org.slf4j.event.Level.WARN;
+        }
+        return properties.getLogging().getLevel();
+    }
+
+    private static void copyRequestAttribute(
+            Map<String, Object> attributes,
+            HttpServletRequest request,
+            String requestAttribute,
+            String logAttribute
+    ) {
+        Object value = request.getAttribute(requestAttribute);
+        if (value != null) {
+            attributes.put(logAttribute, value);
+        }
     }
 
     private static String outcome(int status, Throwable failure) {

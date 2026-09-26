@@ -43,17 +43,20 @@ public class JdbcOperationsObservabilityAspect {
         var settings = properties.getJdbc();
         long startedAt = System.nanoTime();
         String outcome = "success";
+        Throwable failure = null;
         Span span = settings.isTracingEnabled()
                 ? tracer.nextSpan()
-                        .name("jdbc.operation")
+                        .name("jdbc." + component + "." + operation)
                         .tag("db.operation.name", operation)
                         .tag("code.namespace", component)
+                        .tag("code.function.name", operation)
                         .start()
                 : null;
         try (Tracer.SpanInScope ignored = span == null ? null : tracer.withSpan(span)) {
             return joinPoint.proceed();
         } catch (Throwable throwable) {
             outcome = "error";
+            failure = throwable;
             if (span != null) {
                 span.error(throwable);
             }
@@ -62,14 +65,21 @@ public class JdbcOperationsObservabilityAspect {
             if (span != null) {
                 span.end();
             }
-            record(component, operation, outcome, Duration.ofNanos(System.nanoTime() - startedAt));
+            record(component, operation, outcome, failure, Duration.ofNanos(System.nanoTime() - startedAt));
         }
     }
 
-    private void record(String component, String operation, String outcome, Duration duration) {
+    private void record(
+            String component,
+            String operation,
+            String outcome,
+            Throwable failure,
+            Duration duration
+    ) {
         var settings = properties.getJdbc();
         boolean slow = duration.compareTo(settings.getSlowThreshold()) >= 0;
-        if (settings.isLoggingEnabled() && properties.getLogging().isEnabled()) {
+        boolean shouldLog = failure != null || slow || settings.isLogSuccessfulOperations();
+        if (shouldLog && settings.isLoggingEnabled() && properties.getLogging().isEnabled()) {
             Level level = "error".equals(outcome) || slow ? Level.WARN : properties.getLogging().getLevel();
             eventLogger.log(
                     LOGGER,
@@ -78,12 +88,16 @@ public class JdbcOperationsObservabilityAspect {
                     OtelEventType.REPOSITORY_OPERATION,
                     "JDBC operation completed",
                     eventLogger.attributes(
+                            "event.phase", "end",
+                            "span.kind", "internal",
                             "code.namespace", component,
+                            "code.function.name", operation,
                             "db.operation.name", operation,
                             "operation.outcome", outcome,
                             "operation.slow", slow,
                             "duration_ms", duration.toNanos() / 1_000_000.0
-                    )
+                    ),
+                    failure
             );
         }
         if (settings.isMetricsEnabled() && properties.getMetrics().isEnabled()) {

@@ -1,5 +1,8 @@
 package ir.jetvam.apps.uaa.config;
 
+import io.micrometer.tracing.Tracer;
+import ir.jetvam.apps.uaa.grant.client.PublicGrantClientAuthenticationConverter;
+import ir.jetvam.apps.uaa.grant.client.PublicGrantClientAuthenticationProvider;
 import ir.jetvam.infra.security.JetvamJwtAuthenticationConverter;
 import ir.jetvam.infra.security.web.JetvamAccessDeniedHandler;
 import ir.jetvam.infra.security.web.JetvamAuthenticationEntryPoint;
@@ -10,10 +13,14 @@ import ir.jetvam.apps.uaa.grant.password.PasswordGrantAuthenticationProvider;
 import ir.jetvam.apps.uaa.grant.password.TokenEndpointAuthenticationFailureHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.core.OAuth2Token;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenGenerator;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
@@ -38,8 +45,15 @@ public class UaaSecurityConfiguration {
             JetvamAccessDeniedHandler accessDeniedHandler,
             OtpGrantAuthenticationProvider otpGrantAuthenticationProvider,
             PasswordGrantAuthenticationProvider passwordGrantAuthenticationProvider,
-            ObjectMapper objectMapper
+            RegisteredClientRepository registeredClientRepository,
+            OAuth2TokenGenerator<OAuth2Token> tokenGenerator,
+            ObjectMapper objectMapper,
+            ObjectProvider<Tracer> tracerProvider
     ) throws Exception {
+        var authenticationFailureHandler = new TokenEndpointAuthenticationFailureHandler(
+                objectMapper,
+                tracerProvider.getIfAvailable()
+        );
         http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(
@@ -59,14 +73,19 @@ public class UaaSecurityConfiguration {
                 .csrf(csrf -> csrf.ignoringRequestMatchers(PathPatternRequestMatcher.pathPattern("/api/**")))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2AuthorizationServer(server -> server
+                        .tokenGenerator(tokenGenerator)
+                        .clientAuthentication(client -> client
+                                .authenticationConverter(new PublicGrantClientAuthenticationConverter())
+                                .authenticationProvider(new PublicGrantClientAuthenticationProvider(
+                                        registeredClientRepository
+                                ))
+                                .errorResponseHandler(authenticationFailureHandler))
                         .tokenEndpoint(endpoint -> endpoint
                                 .accessTokenRequestConverter(new OtpGrantAuthenticationConverter())
                                 .accessTokenRequestConverter(new PasswordGrantAuthenticationConverter())
                                 .authenticationProvider(otpGrantAuthenticationProvider)
                                 .authenticationProvider(passwordGrantAuthenticationProvider)
-                                .errorResponseHandler(
-                                        new TokenEndpointAuthenticationFailureHandler(objectMapper)
-                                ))
+                                .errorResponseHandler(authenticationFailureHandler))
                         .oidc(Customizer.withDefaults()))
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.decoder(jwtDecoder).jwtAuthenticationConverter(authenticationConverter))

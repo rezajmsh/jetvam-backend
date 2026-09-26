@@ -39,6 +39,9 @@ springdoc:
     - group: integration
       display-name: External providers
       paths-to-match: [/api/v1/integrations/**]
+    - group: inquiries
+      display-name: Inquiry operations
+      paths-to-match: [/api/v1/inquiries/**]
 
 server:
   port: ${JETVAM_JOBS_PORT:8082}
@@ -53,14 +56,19 @@ logging:
     jetvam.notification.delivery: ${JETVAM_NOTIFICATION_LOG_LEVEL:INFO}
     jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
     jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${JETVAM_HIBERNATE_SQL_LOG_LEVEL:OFF}
 
 management:
+  otlp:
+    metrics:
+      export:
+        enabled: false
   tracing:
     sampling:
       probability: ${JETVAM_TRACING_SAMPLING_PROBABILITY:1.0}
     export:
       otlp:
-        enabled: ${JETVAM_OTEL_TRACES_EXPORT_ENABLED:false}
+        enabled: false
   opentelemetry:
     enabled: ${JETVAM_OTEL_ENABLED:true}
     resource-attributes:
@@ -69,6 +77,9 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
+  identity:
+    profile-api:
+      enabled: false
   security:
     resource-server:
       enabled: true
@@ -90,12 +101,14 @@ jetvam:
     repository:
       enabled: true
       logging-enabled: true
+      log-successful-operations: ${JETVAM_REPOSITORY_LOG_SUCCESSES:true}
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_REPOSITORY_SLOW_THRESHOLD:500ms}
     jdbc:
       enabled: true
       logging-enabled: true
+      log-successful-operations: ${JETVAM_JDBC_LOG_SUCCESSES:false}
       metrics-enabled: true
       tracing-enabled: true
       slow-threshold: ${JETVAM_JDBC_SLOW_THRESHOLD:500ms}
@@ -150,6 +163,23 @@ jetvam:
     cache-name: i18n-messages
   jobs:
     enabled: true
+  inquiry:
+    api:
+      enabled: false
+    worker:
+      batch-size: ${JETVAM_INQUIRY_BATCH_SIZE:50}
+  product:
+    api:
+      enabled: false
+  assessment:
+    api:
+      enabled: false
+  payment:
+    api:
+      enabled: false
+  origination:
+    api:
+      enabled: false
   web:
     openapi:
       title: Jetvam Jobs API
@@ -160,7 +190,7 @@ jetvam:
     read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}
   notification:
     outbox:
-      encryption-key-base64: ${JETVAM_NOTIFICATION_ENCRYPTION_KEY_BASE64:}
+      encryption-key-base64: ${JETVAM_NOTIFICATION_ENCRYPTION_KEY_BASE64:amV0dmFtLWxvY2FsLW5vdGlmaWNhdGlvbi1rZXktMDE=}
       max-attempts: ${JETVAM_NOTIFICATION_MAX_ATTEMPTS:5}
       initial-retry-delay: ${JETVAM_NOTIFICATION_INITIAL_RETRY_DELAY:2s}
       maximum-retry-delay: ${JETVAM_NOTIFICATION_MAX_RETRY_DELAY:1m}

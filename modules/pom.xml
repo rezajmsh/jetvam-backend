@@ -13,6 +13,7 @@
     <packaging>pom</packaging>
     <modules>
         <module>otp</module>
+        <module>inquiry</module>
         <module>identity</module>
         <module>settings</module>
         <module>product</module>

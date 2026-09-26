@@ -22,3 +22,11 @@ create index ix_i18n_message_locale_active
 
 comment on table i18n_message is 'Localized messages consumed by Jetvam message source';
 comment on column i18n_message.locale is 'BCP 47 language tag such as fa, fa-IR or en-US';
+
+insert into i18n_message (message_key, locale, message_text, description)
+values ('common.unexpected-error', 'fa-IR', 'خطای پیش‌بینی‌نشده‌ای رخ داده است.', 'Generic unexpected error'),
+       ('common.validation-error', 'fa-IR', 'اطلاعات ورودی معتبر نیست.', 'Generic validation error'),
+       ('common.not-found', 'fa-IR', 'اطلاعات درخواستی پیدا نشد.', 'Generic resource not found'),
+       ('common.unexpected-error', 'en-US', 'An unexpected error occurred.', 'Generic unexpected error'),
+       ('common.validation-error', 'en-US', 'The supplied data is invalid.', 'Generic validation error'),
+       ('common.not-found', 'en-US', 'The requested resource was not found.', 'Generic resource not found');

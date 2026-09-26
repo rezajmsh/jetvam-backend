@@ -39,7 +39,11 @@ class OtelStructuredLogFormatterTest {
         event.setMDCPropertyMap(Map.of("traceId", "abc123", "spanId", "def456"));
         event.setKeyValuePairs(List.of(
                 new KeyValuePair("event.type", "http.server.request"),
-                new KeyValuePair("duration_ms", 12.5)
+                new KeyValuePair("duration_ms", 12.5),
+                new KeyValuePair("db.queries", List.of(Map.of(
+                        "text", "select * from customer where id=?",
+                        "execute_duration_ms", 1.25
+                )))
         ));
 
         String json = new OtelStructuredLogFormatter(new MockEnvironment()).format(event);
@@ -51,6 +55,9 @@ class OtelStructuredLogFormatterTest {
                 .contains("\"span_id\":\"def456\"")
                 .contains("\"service.name\":\"jetvam-test\"")
                 .contains("\"event.type\":\"http.server.request\"")
+                .contains("\"db.queries\":[{")
+                .contains("\"text\":\"select * from customer where id=?\"")
+                .contains("\"execute_duration_ms\":1.25")
                 .contains("\"duration_ms\":12.5");
     }
 }
