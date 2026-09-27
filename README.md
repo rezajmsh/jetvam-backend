@@ -6,6 +6,9 @@ Frontend login and authorization examples are documented in
 [`docs/security/frontend-authentication.md`](docs/security/frontend-authentication.md).
 
 Backend سامانه Jetvam به‌صورت modular monolith و با سه composition root مستقل سازمان‌دهی شده است.
+هر سه runtime به schema مشترک `${JETVAM_DB_SCHEMA:jetvam}` متصل می‌شوند تا داده‌های ماژول‌های مشترک
+مانند Identity و Inquiry یک source of truth داشته باشند. جداسازی جداول با prefix و مالکیت ماژول انجام
+می‌شود، نه با تکثیر schema برای هر application.
 
 ## Runtime applications
 
@@ -45,6 +48,7 @@ infrastructure -X-> business modules
 ## Business modules
 
 - `identity`: Party، پروفایل مشتری، account، role، OTP و احراز هویت
+- `inquiry`: اجرای پایدار استعلام‌ها، نگهداری نتیجه، اعتبار زمانی و callback
 - `product`: طرح تسهیلاتی عمومی/سازمانی، audience و policyهای هر طرح
 - `origination`: درخواست تسهیلات، مراحل و ادامه درخواست نیمه‌تمام
 - `assessment`: شاهکار، اعتبارسنجی و قواعد احراز
@@ -90,7 +94,7 @@ Lombok در parent پروژه تعریف شده و در تمام ماژول‌ه
 
 1. `POST /api/v1/customer/registrations/otp` با `mobile` و `nationalCode`
 2. `POST /api/v1/customer/registrations/verify` با `challengeId` و `otp`
-3. `PATCH /api/v1/customer/profile` برای تکمیل نام، نام خانوادگی و تاریخ تولد توسط مشتری لاگین‌شده
+3. `PUT /api/v1/customer/profile/identity-information` در Services برای تکمیل نام، نام خانوادگی و تاریخ تولد توسط مشتری لاگین‌شده
 
 در مرحله دوم، شاهکار کنترل و یک account از نوع `OTP` و بدون username/password ساخته می‌شود. برای
 ورود، ابتدا `POST /api/v1/customer/auth/otp` فراخوانی و سپس کد در token endpoint استاندارد exchange می‌شود:
@@ -111,6 +115,19 @@ scope=jetvam.api offline_access
 در محیط runtime باید `JETVAM_OTP_HMAC_SECRET` با حداقل ۳۲ کاراکتر و تنظیمات endpointهای
 `JETVAM_OTP_PROVIDER_*` و `JETVAM_SHAHKAR_PROVIDER_*` از secret/configuration خارجی تأمین شوند؛
 providerها به‌صورت پیش‌فرض fail-closed هستند.
+
+`identity` یک ماژول business داخلی است و endpoint مستقل برای کلاینت ندارد. UAA فقط جریان‌های ثبت‌نام،
+ورود و صدور token را ارائه می‌کند؛ API پروفایل از composition root سرویس‌ها ارائه می‌شود. در deployment
+پیشنهادی، gateway همین مسیرها را زیر یک دامنه عمومی route می‌کند و کلاینت با نام یا آدرس ماژول‌های داخلی
+درگیر نمی‌شود.
+
+## Inquiry persistence and validity
+
+تمام فراخوانی‌های استعلام، چه synchronous و چه asynchronous، در `inquiry_request` ثبت می‌شوند. تنظیم
+فعال‌بودن و مدت اعتبار هر نوع استعلام در `inquiry_definition` نگهداری می‌شود. اگر برای subject همان
+استعلام نتیجه `COMPLETED` و منقضی‌نشده وجود داشته باشد، تماس بیرونی تکرار نمی‌شود؛ یک رکورد audit جدید
+با `cache_hit=true` و `reused_from_request_id` ساخته می‌شود. تغییر این policy از API مدیریتی
+`/api/v1/inquiries/definitions` انجام می‌شود.
 
 ## Job management
 

@@ -14,8 +14,8 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 
 /**
- * Persists a consumer-neutral asynchronous inquiry, provider affinity and callback delivery state.
- * Provider polling and callback retries remain durable across process restarts and job nodes.
+ * Persists every synchronous or asynchronous inquiry invocation and its normalized result.
+ * Cache reuse, provider affinity, polling and callback retries remain durable across restarts.
  *
  * @author reza jamshidi
  * @since 9/25/2026
@@ -32,9 +32,19 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     @Column(name = "national_code", nullable = false, length = 10)
     private String nationalCode;
 
+    @Column(name = "subject_key", nullable = false, length = 150)
+    private String subjectKey;
+
+    @Column(name = "request_json", nullable = false, columnDefinition = "text")
+    private String requestJson;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "execution_mode", nullable = false, length = 20)
+    private InquiryExecutionMode executionMode;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 40)
-    private AsyncInquiryStatus status;
+    private InquiryStatus status;
 
     @Column(name = "provider_code", length = 100)
     private String providerCode;
@@ -42,8 +52,20 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     @Column(name = "external_tracking_code", length = 150)
     private String externalTrackingCode;
 
-    @Column(name = "facts_json", columnDefinition = "text")
-    private String factsJson;
+    @Column(name = "result_json", columnDefinition = "text")
+    private String resultJson;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    @Column(name = "valid_until")
+    private Instant validUntil;
+
+    @Column(name = "cache_hit", nullable = false)
+    private boolean cacheHit;
+
+    @Column(name = "reused_from_request_id")
+    private java.util.UUID reusedFromRequestId;
 
     @Column(name = "rejection_code", length = 100)
     private String rejectionCode;
@@ -54,19 +76,19 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
 
-    @Column(name = "next_attempt_at", nullable = false)
+    @Column(name = "next_attempt_at")
     private Instant nextAttemptAt;
 
     @Column(name = "processing_started_at")
     private Instant processingStartedAt;
 
-    @Column(name = "callback_transport", nullable = false, length = 50)
+    @Column(name = "callback_transport", length = 50)
     private String callbackTransport;
 
-    @Column(name = "callback_destination", nullable = false, length = 150)
+    @Column(name = "callback_destination", length = 150)
     private String callbackDestination;
 
-    @Column(name = "callback_correlation_id", nullable = false, length = 150)
+    @Column(name = "callback_correlation_id", length = 150)
     private String callbackCorrelationId;
 
     @Enumerated(EnumType.STRING)
@@ -88,6 +110,8 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     public InquiryRequestEntity(
             String inquiryCode,
             String nationalCode,
+            String subjectKey,
+            String requestJson,
             String callbackTransport,
             String callbackDestination,
             String callbackCorrelationId,
@@ -95,19 +119,70 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     ) {
         this.inquiryCode = normalized(inquiryCode, "inquiryCode");
         this.nationalCode = normalized(nationalCode, "nationalCode");
+        this.subjectKey = normalized(subjectKey, "subjectKey");
+        this.requestJson = Preconditions.requireText(requestJson, "requestJson");
+        this.executionMode = InquiryExecutionMode.ASYNCHRONOUS;
         this.callbackTransport = normalized(callbackTransport, "callbackTransport");
         this.callbackDestination = normalized(callbackDestination, "callbackDestination");
         this.callbackCorrelationId = normalized(callbackCorrelationId, "callbackCorrelationId");
-        this.status = AsyncInquiryStatus.QUEUED;
+        this.status = InquiryStatus.QUEUED;
         this.callbackStatus = InquiryCallbackStatus.NOT_READY;
         this.nextAttemptAt = Preconditions.requireNonNull(now, "now");
     }
 
+    public static InquiryRequestEntity synchronous(
+            String inquiryCode,
+            String nationalCode,
+            String subjectKey,
+            String requestJson,
+            Instant now
+    ) {
+        InquiryRequestEntity request = new InquiryRequestEntity();
+        request.inquiryCode = normalized(inquiryCode, "inquiryCode");
+        request.nationalCode = normalized(nationalCode, "nationalCode");
+        request.subjectKey = normalized(subjectKey, "subjectKey");
+        request.requestJson = Preconditions.requireText(requestJson, "requestJson");
+        request.executionMode = InquiryExecutionMode.SYNCHRONOUS;
+        request.status = InquiryStatus.PROCESSING;
+        request.processingStartedAt = Preconditions.requireNonNull(now, "now");
+        request.attemptCount = 1;
+        request.callbackStatus = InquiryCallbackStatus.NOT_REQUIRED;
+        return request;
+    }
+
+    public static InquiryRequestEntity reusedSynchronously(
+            String requestJson,
+            InquiryRequestEntity source,
+            Instant now
+    ) {
+        InquiryRequestEntity request = synchronous(
+                source.inquiryCode, source.nationalCode, source.subjectKey, requestJson, now
+        );
+        request.reuse(source, false, now);
+        return request;
+    }
+
+    public static InquiryRequestEntity reusedAsynchronously(
+            String requestJson,
+            String callbackTransport,
+            String callbackDestination,
+            String callbackCorrelationId,
+            InquiryRequestEntity source,
+            Instant now
+    ) {
+        InquiryRequestEntity request = new InquiryRequestEntity(
+                source.inquiryCode, source.nationalCode, source.subjectKey, requestJson,
+                callbackTransport, callbackDestination, callbackCorrelationId, now
+        );
+        request.reuse(source, true, now);
+        return request;
+    }
+
     public void start(Instant now) {
-        Preconditions.require(status == AsyncInquiryStatus.QUEUED
-                        || status == AsyncInquiryStatus.WAITING_PROVIDER,
+        Preconditions.require(status == InquiryStatus.QUEUED
+                        || status == InquiryStatus.WAITING_PROVIDER,
                 "Inquiry request is not ready");
-        status = AsyncInquiryStatus.PROCESSING;
+        status = InquiryStatus.PROCESSING;
         processingStartedAt = Preconditions.requireNonNull(now, "now");
         attemptCount++;
     }
@@ -118,15 +193,27 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
         externalTrackingCode = normalized(trackingCode, "externalTrackingCode");
         nextAttemptAt = Preconditions.requireNonNull(nextPollAt, "nextPollAt");
         processingStartedAt = null;
-        status = AsyncInquiryStatus.WAITING_PROVIDER;
+        status = InquiryStatus.WAITING_PROVIDER;
     }
 
     public void complete(String provider, String trackingCode, String facts, Instant now) {
+        complete(provider, trackingCode, facts, now, now);
+    }
+
+    public void complete(
+            String provider,
+            String trackingCode,
+            String result,
+            Instant now,
+            Instant validUntil
+    ) {
         requireProcessing();
         providerCode = provider;
         externalTrackingCode = trackingCode;
-        factsJson = Preconditions.requireText(facts, "factsJson");
-        terminal(AsyncInquiryStatus.COMPLETED, now);
+        resultJson = Preconditions.requireText(result, "resultJson");
+        completedAt = Preconditions.requireNonNull(now, "now");
+        this.validUntil = Preconditions.requireNonNull(validUntil, "validUntil");
+        terminal(InquiryStatus.COMPLETED, now);
     }
 
     public void reject(String provider, String trackingCode, String code, String message, Instant now) {
@@ -135,19 +222,19 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
         externalTrackingCode = trackingCode;
         rejectionCode = code;
         resultMessage = limited(message, "Inquiry provider rejected the request");
-        terminal(AsyncInquiryStatus.REJECTED, now);
+        terminal(InquiryStatus.REJECTED, now);
     }
 
     public void retry(String error, Instant nextAttempt) {
         resultMessage = limited(error, "Inquiry execution failed");
         nextAttemptAt = Preconditions.requireNonNull(nextAttempt, "nextAttempt");
         processingStartedAt = null;
-        status = AsyncInquiryStatus.QUEUED;
+        status = InquiryStatus.QUEUED;
     }
 
     public void fail(String error, Instant now) {
         resultMessage = limited(error, "Inquiry execution failed");
-        terminal(AsyncInquiryStatus.FAILED, now);
+        terminal(InquiryStatus.FAILED, now);
     }
 
     public void startCallback(Instant now) {
@@ -181,15 +268,39 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
         return externalTrackingCode != null;
     }
 
-    private void terminal(AsyncInquiryStatus terminalStatus, Instant now) {
+    private void terminal(InquiryStatus terminalStatus, Instant now) {
         status = terminalStatus;
         processingStartedAt = null;
-        callbackStatus = InquiryCallbackStatus.PENDING;
-        callbackNextAttemptAt = Preconditions.requireNonNull(now, "now");
+        if (executionMode == InquiryExecutionMode.ASYNCHRONOUS) {
+            callbackStatus = InquiryCallbackStatus.PENDING;
+            callbackNextAttemptAt = Preconditions.requireNonNull(now, "now");
+        } else {
+            callbackStatus = InquiryCallbackStatus.NOT_REQUIRED;
+        }
+    }
+
+    private void reuse(InquiryRequestEntity source, boolean callbackRequired, Instant now) {
+        Preconditions.require(source.status == InquiryStatus.COMPLETED, "source must be completed");
+        providerCode = source.providerCode;
+        externalTrackingCode = source.externalTrackingCode;
+        resultJson = Preconditions.requireText(source.resultJson, "source.resultJson");
+        completedAt = Preconditions.requireNonNull(now, "now");
+        validUntil = Preconditions.requireNonNull(source.validUntil, "source.validUntil");
+        reusedFromRequestId = Preconditions.requireNonNull(source.getId(), "source.id");
+        cacheHit = true;
+        status = InquiryStatus.COMPLETED;
+        processingStartedAt = null;
+        if (callbackRequired) {
+            callbackStatus = InquiryCallbackStatus.PENDING;
+            callbackNextAttemptAt = now;
+        } else {
+            callbackStatus = InquiryCallbackStatus.NOT_REQUIRED;
+            callbackNextAttemptAt = null;
+        }
     }
 
     private void requireProcessing() {
-        Preconditions.require(status == AsyncInquiryStatus.PROCESSING, "Inquiry request is not processing");
+        Preconditions.require(status == InquiryStatus.PROCESSING, "Inquiry request is not processing");
     }
 
     private static String normalized(String value, String field) {

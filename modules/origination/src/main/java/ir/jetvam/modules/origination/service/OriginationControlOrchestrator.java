@@ -1,8 +1,8 @@
 package ir.jetvam.modules.origination.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.modules.assessment.service.AssessmentModels;
 import ir.jetvam.modules.assessment.service.EligibilityPolicyEvaluator;
@@ -183,7 +183,7 @@ public class OriginationControlOrchestrator {
     private String writeFacts(Map<String, String> facts) {
         try {
             return objectMapper.writeValueAsString(facts);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to persist application control facts", exception);
         }
     }
@@ -192,7 +192,7 @@ public class OriginationControlOrchestrator {
         try {
             return objectMapper.readValue(json, new TypeReference<>() {
             });
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to reuse application control facts", exception);
         }
     }

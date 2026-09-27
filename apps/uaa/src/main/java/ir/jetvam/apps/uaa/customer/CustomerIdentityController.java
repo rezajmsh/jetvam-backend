@@ -57,7 +57,10 @@ public class CustomerIdentityController {
 
     @PostMapping("/auth/otp")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @Operation(summary = "Request customer login OTP", description = "Sends the OTP used by the customer OAuth grant to obtain tokens.")
+    @Operation(
+            summary = "Request customer login OTP",
+            description = "Sends a login OTP only when a registered, active customer account exists for the mobile number."
+    )
     public OtpChallengeView requestLoginOtp(@Valid @RequestBody RequestCustomerLoginOtp request) {
         return authenticationService.requestOtp(request.mobile());
     }

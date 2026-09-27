@@ -25,7 +25,7 @@ class InquiryRequestEntityTest {
         request.start(NOW.plusSeconds(60));
         request.complete("credit-provider", "tracking-42", "{\"rank\":\"5\"}", NOW.plusSeconds(61));
 
-        assertThat(request.getStatus()).isEqualTo(AsyncInquiryStatus.COMPLETED);
+        assertThat(request.getStatus()).isEqualTo(InquiryStatus.COMPLETED);
         assertThat(request.getProviderCode()).isEqualTo("credit-provider");
         assertThat(request.getExternalTrackingCode()).isEqualTo("tracking-42");
         assertThat(request.getAttemptCount()).isEqualTo(2);
@@ -44,7 +44,7 @@ class InquiryRequestEntityTest {
         request.startCallback(NOW.plusSeconds(30));
         request.callbackDelivered();
 
-        assertThat(request.getStatus()).isEqualTo(AsyncInquiryStatus.REJECTED);
+        assertThat(request.getStatus()).isEqualTo(InquiryStatus.REJECTED);
         assertThat(request.getAttemptCount()).isEqualTo(1);
         assertThat(request.getCallbackAttemptCount()).isEqualTo(2);
         assertThat(request.getCallbackStatus()).isEqualTo(InquiryCallbackStatus.DELIVERED);
@@ -55,6 +55,8 @@ class InquiryRequestEntityTest {
         return new InquiryRequestEntity(
                 "CREDIT_RATING_INQUIRY",
                 "0013546789",
+                "0013546789",
+                "{\"nationalCode\":\"0013546789\"}",
                 "SPRING_BEAN",
                 "origination-application-inquiry",
                 "application-inquiry-id",

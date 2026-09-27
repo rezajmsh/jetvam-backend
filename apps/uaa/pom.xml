@@ -6,7 +6,6 @@
     <dependencies>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-web</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-security</artifactId></dependency>
-        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-authorization-server</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-persistence</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-cache</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-i18n</artifactId></dependency>
@@ -21,6 +20,7 @@
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-security-oauth2-authorization-server</artifactId></dependency>
         <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-test</artifactId><scope>test</scope></dependency>
         <dependency><groupId>org.springframework.security</groupId><artifactId>spring-security-test</artifactId><scope>test</scope></dependency>
+        <dependency><groupId>com.h2database</groupId><artifactId>h2</artifactId><scope>test</scope></dependency>
     </dependencies>
     <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
 </project>

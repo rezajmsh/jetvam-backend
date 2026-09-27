@@ -1,12 +1,14 @@
 package ir.jetvam.modules.identity.service;
 
-import ir.jetvam.common.exception.ValidationException;
 import ir.jetvam.common.security.UserCategory;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.common.validation.IranianIdentifiers;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.modules.identity.IdentityOtpPurposes;
+import ir.jetvam.modules.identity.exception.CustomerAccountUnavailableException;
+import ir.jetvam.modules.identity.exception.CustomerRegistrationRequiredException;
 import ir.jetvam.modules.identity.model.AuthenticationMethod;
+import ir.jetvam.modules.identity.model.UserAccountStatus;
 import ir.jetvam.modules.otp.service.OtpChallengeService;
 import ir.jetvam.modules.otp.service.OtpChallengeView;
 import ir.jetvam.modules.otp.service.OtpVerificationData;
@@ -22,7 +24,7 @@ import java.util.UUID;
 
 /**
  * Authenticates customer accounts exclusively through a single-use mobile OTP.
- * Unknown mobiles receive the same challenge flow to reduce account enumeration.
+ * Login challenges are issued only for registered and currently available customer accounts.
  *
  * @author reza jamshidi
  * @since 9/22/2026
@@ -37,9 +39,11 @@ public class DefaultCustomerAuthenticationService implements CustomerAuthenticat
     private final TimeProvider timeProvider;
 
     @Override
+    @Transactional
     public OtpChallengeView requestOtp(String value) {
         String mobile = IranianIdentifiers.normalizeMobileNumber(value);
         Preconditions.require(IranianIdentifiers.isValidMobileNumber(mobile), "mobile is invalid");
+        requireAvailable(requireCustomerAccount(mobile));
         return otpChallengeService.issue(mobile, null, IdentityOtpPurposes.CUSTOMER_LOGIN);
     }
 
@@ -51,22 +55,26 @@ public class DefaultCustomerAuthenticationService implements CustomerAuthenticat
                 otp,
                 IdentityOtpPurposes.CUSTOMER_LOGIN
         );
-        UserAccountEntity account = individualRepository.findByMobile(verified.mobile())
+        UserAccountEntity account = requireCustomerAccount(verified.mobile());
+        requireAvailable(account);
+        IdentityUserPrincipal principal = IdentityUserPrincipal.from(account);
+        account.recordSuccessfulLogin(timeProvider.now());
+        return principal;
+    }
+
+    private UserAccountEntity requireCustomerAccount(String mobile) {
+        return individualRepository.findByMobile(mobile)
                 .flatMap(individual -> userRepository.findByParty_IdAndPrimaryAuthenticationMethod(
                         individual.getId(),
                         AuthenticationMethod.OTP
                 ))
                 .filter(candidate -> candidate.getCategories().contains(UserCategory.CUSTOMER))
-                .orElseThrow(DefaultCustomerAuthenticationService::authenticationFailed);
-        IdentityUserPrincipal principal = IdentityUserPrincipal.from(account);
-        if (!principal.isEnabled() || !principal.isAccountNonLocked()) {
-            throw authenticationFailed();
-        }
-        account.recordSuccessfulLogin(timeProvider.now());
-        return principal;
+                .orElseThrow(CustomerRegistrationRequiredException::new);
     }
 
-    private static ValidationException authenticationFailed() {
-        return new ValidationException("OTP is invalid or the customer account is unavailable");
+    private static void requireAvailable(UserAccountEntity account) {
+        if (account.getStatus() != UserAccountStatus.ACTIVE) {
+            throw new CustomerAccountUnavailableException();
+        }
     }
 }

@@ -1,13 +1,13 @@
 package ir.jetvam.modules.inquiry.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.exception.ResourceNotFoundException;
 import ir.jetvam.common.time.TimeProvider;
-import ir.jetvam.modules.inquiry.model.AsyncInquiryStatus;
 import ir.jetvam.modules.inquiry.model.InquiryCallbackStatus;
 import ir.jetvam.modules.inquiry.model.InquiryRequestEntity;
+import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import ir.jetvam.modules.inquiry.repository.InquiryRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -33,15 +33,16 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class InquiryWorkTransactionService {
 
-    private static final Collection<AsyncInquiryStatus> CLAIMABLE = List.of(
-            AsyncInquiryStatus.QUEUED,
-            AsyncInquiryStatus.WAITING_PROVIDER
+    private static final Collection<InquiryStatus> CLAIMABLE = List.of(
+            InquiryStatus.QUEUED,
+            InquiryStatus.WAITING_PROVIDER
     );
     private static final int MAX_ATTEMPTS = 8;
     private static final int MAX_CALLBACK_ATTEMPTS = 10;
     private static final Duration LEASE = Duration.ofMinutes(10);
 
     private final InquiryRequestRepository requestRepository;
+    private final InquiryDefinitionService definitionService;
     private final TimeProvider timeProvider;
     private final ObjectMapper objectMapper;
 
@@ -72,9 +73,11 @@ public class InquiryWorkTransactionService {
                     result.rejectionMessage(), timeProvider.now()
             );
         } else {
+            var now = timeProvider.now();
             request.complete(
                     result.providerCode(), result.externalTrackingCode(), writeFacts(result.facts()),
-                    timeProvider.now()
+                    now,
+                    now.plus(definitionService.validity(request.getInquiryCode()))
             );
         }
     }
@@ -122,7 +125,7 @@ public class InquiryWorkTransactionService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recoverStale() {
         requestRepository.findStale(
-                AsyncInquiryStatus.PROCESSING,
+                InquiryStatus.PROCESSING,
                 timeProvider.now().minus(LEASE),
                 PageRequest.of(0, 100)
         ).forEach(request -> request.retry("Recovered after processing lease expired", timeProvider.now()));
@@ -141,7 +144,7 @@ public class InquiryWorkTransactionService {
                 request.getCallbackTransport(), request.getCallbackDestination(), request.getCallbackCorrelationId()
         );
         AsyncInquiryModels.CompletionEvent event = new AsyncInquiryModels.CompletionEvent(
-                request.getId(), request.getInquiryCode(), request.getStatus(), readFacts(request.getFactsJson()),
+                request.getId(), request.getInquiryCode(), request.getStatus(), readFacts(request.getResultJson()),
                 request.getRejectionCode(), request.getResultMessage(), request.getCallbackCorrelationId()
         );
         return new AsyncInquiryModels.CallbackWork(callback, event);
@@ -155,7 +158,7 @@ public class InquiryWorkTransactionService {
     private String writeFacts(Map<String, String> facts) {
         try {
             return objectMapper.writeValueAsString(facts);
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to persist inquiry facts", exception);
         }
     }
@@ -167,7 +170,7 @@ public class InquiryWorkTransactionService {
         try {
             return objectMapper.readValue(json, new TypeReference<>() {
             });
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to read inquiry facts", exception);
         }
     }

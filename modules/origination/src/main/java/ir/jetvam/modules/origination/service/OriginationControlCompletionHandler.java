@@ -1,7 +1,7 @@
 package ir.jetvam.modules.origination.service;
 
 import ir.jetvam.common.exception.ResourceNotFoundException;
-import ir.jetvam.modules.inquiry.model.AsyncInquiryStatus;
+import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import ir.jetvam.modules.inquiry.service.AsyncInquiryModels;
 import ir.jetvam.modules.inquiry.service.InquiryCompletionHandler;
 import ir.jetvam.modules.origination.model.ApplicationControlEntity;
@@ -47,15 +47,15 @@ public class OriginationControlCompletionHandler implements InquiryCompletionHan
             return;
         }
         LoanApplicationEntity application = control.getApplication();
-        if (event.status() == AsyncInquiryStatus.COMPLETED) {
+        if (event.status() == InquiryStatus.COMPLETED) {
             orchestrator.complete(application, control, event.facts());
-        } else if (event.status() == AsyncInquiryStatus.REJECTED) {
+        } else if (event.status() == InquiryStatus.REJECTED) {
             orchestrator.reject(
                     application,
                     control,
                     event.message() == null ? control.getFailureMessage() : event.message()
             );
-        } else if (event.status() == AsyncInquiryStatus.FAILED) {
+        } else if (event.status() == InquiryStatus.FAILED) {
             orchestrator.technicalFailure(application, control, event.message());
         } else {
             throw new IllegalArgumentException("Inquiry callback outcome is not terminal: " + event.status());

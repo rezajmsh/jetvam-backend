@@ -73,11 +73,6 @@
             </dependency>
             <dependency>
                 <groupId>ir.jetvam</groupId>
-                <artifactId>jetvam-infra-authorization-server</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>ir.jetvam</groupId>
                 <artifactId>jetvam-infra-persistence</artifactId>
                 <version>${project.version}</version>
             </dependency>

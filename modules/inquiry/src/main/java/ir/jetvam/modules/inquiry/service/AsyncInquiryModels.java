@@ -1,6 +1,6 @@
 package ir.jetvam.modules.inquiry.service;
 
-import ir.jetvam.modules.inquiry.model.AsyncInquiryStatus;
+import ir.jetvam.modules.inquiry.model.InquiryStatus;
 
 import java.util.Map;
 import java.util.UUID;
@@ -40,7 +40,7 @@ public final class AsyncInquiryModels {
     public record CompletionEvent(
             UUID requestId,
             String inquiryCode,
-            AsyncInquiryStatus status,
+            InquiryStatus status,
             Map<String, String> facts,
             String rejectionCode,
             String message,

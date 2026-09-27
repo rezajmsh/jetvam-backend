@@ -1,7 +1,7 @@
 package ir.jetvam.modules.origination.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.exception.ResourceNotFoundException;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.common.validation.Preconditions;
@@ -270,7 +270,7 @@ public class DefaultLoanApplicationService implements LoanApplicationService {
     private String writeJson(Object value) {
         try {
             return objectMapper.writeValueAsString(Preconditions.requireNonNull(value, "value"));
-        } catch (JsonProcessingException exception) {
+        } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to serialize application information", exception);
         }
     }

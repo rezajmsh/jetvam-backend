@@ -10,6 +10,8 @@ package ir.jetvam.modules.inquiry;
 public final class InquiryPermissions {
 
     public static final String EXECUTE = "inquiry:execute";
+    public static final String CONFIGURATION_READ = "inquiry:configuration:read";
+    public static final String CONFIGURATION_WRITE = "inquiry:configuration:write";
 
     private InquiryPermissions() {
     }

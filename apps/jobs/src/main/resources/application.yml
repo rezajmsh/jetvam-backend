@@ -77,9 +77,6 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
-  identity:
-    profile-api:
-      enabled: false
   security:
     resource-server:
       enabled: true
@@ -122,7 +119,7 @@ jetvam:
     username: ${JETVAM_DB_USERNAME:jetvam}
     password: ${JETVAM_DB_PASSWORD:jetvam}
     driver-class-name: org.postgresql.Driver
-    default-schema: jetvam
+    default-schema: ${JETVAM_DB_SCHEMA:jetvam}
     pool:
       name: jetvam-jobs-pool
       minimum-idle: ${JETVAM_JOBS_DB_POOL_MIN_SIZE:2}
@@ -141,6 +138,8 @@ jetvam:
       enabled: ${JETVAM_DB_MIGRATION_ENABLED:true}
       locations: classpath:db/migration
       validate-on-migrate: true
+      out-of-order: true
+      ignore-migration-patterns: [ "*:missing" ]
   cache:
     enabled: true
     provider: ${JETVAM_CACHE_PROVIDER:local}

@@ -13,7 +13,8 @@ endpoint پیاده‌سازی کنند.
 آدرس محیط local:
 
 ```text
-http://localhost:8081
+UAA_BASE_URL=http://localhost:8081
+API_BASE_URL=http://localhost:8080
 ```
 
 در محیط‌های دیگر، مقدار `UAA_BASE_URL` توسط تنظیمات همان محیط تعیین می‌شود. تمام ارتباطات محیط‌های
@@ -214,11 +215,13 @@ Content-Type: application/json
 
 ### 6.3. تکمیل پروفایل بعد از ورود
 
-پس از دریافت access token مشتری:
+پس از دریافت access token مشتری، پروفایل از Services API خوانده یا تکمیل می‌شود؛ Identity نام یک
+ماژول داخلی است و endpoint یا base URL مستقلی برای کلاینت ندارد. در محیط‌های دارای gateway، هر دو
+مسیر می‌توانند زیر یک دامنه عمومی ارائه شوند.
 
 ```http
-PATCH /api/v1/customer/profile HTTP/1.1
-Host: localhost:8081
+PUT /api/v1/customer/profile/identity-information HTTP/1.1
+Host: localhost:8080
 Authorization: Bearer <access-token>
 Content-Type: application/json
 

@@ -16,6 +16,8 @@ public final class OtpGrantConstants {
     public static final String CHALLENGE_ID = "challenge_id";
     public static final String OTP = "otp";
     public static final String SCOPE = "scope";
+    public static final String CUSTOMER_REGISTRATION_REQUIRED = "customer_registration_required";
+    public static final String CUSTOMER_ACCOUNT_UNAVAILABLE = "customer_account_unavailable";
 
     private OtpGrantConstants() {
     }

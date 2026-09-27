@@ -1,125 +1,109 @@
 package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.common.exception.IntegrationException;
-import ir.jetvam.common.validation.IranianIdentifiers;
-import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.modules.integration.routing.ProviderExecution;
 import ir.jetvam.modules.integration.routing.ProviderRouter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.function.Function;
-
 /**
- * Executes canonical inquiries through Integration's runtime provider router.
- * Input normalization occurs before network I/O and read-only inquiries are safe for failover.
+ * Executes already-normalized inquiry commands through Integration's runtime provider router.
+ * Persistence and cache policy stay in the public inquiry service, outside provider adapters.
  *
  * @author reza jamshidi
  * @since 9/25/2026
  */
 @Service
 @RequiredArgsConstructor
-public class RoutingInquiryService implements InquiryService {
+public class RoutingInquiryService {
 
     private final ProviderRouter providerRouter;
 
-    @Override
-    public InquiryResults.MobileOwnership verifyMobileOwnership(InquiryRequests.MobileOwnership request) {
-        Preconditions.requireNonNull(request, "request");
-        String mobile = IranianIdentifiers.normalizeMobileNumber(request.mobile());
-        String nationalCode = IranianIdentifiers.normalizeNationalCode(request.nationalCode());
-        Preconditions.require(IranianIdentifiers.isValidMobileNumber(mobile), "mobile is invalid");
-        requireNationalCode(nationalCode);
+    public ProviderExecution<InquiryResults.MobileOwnership> verifyMobileOwnership(
+            InquiryRequests.MobileOwnership request
+    ) {
         return execute(
                 InquiryCapabilities.MOBILE_OWNERSHIP,
-                new InquiryRequests.MobileOwnership(mobile, nationalCode),
+                request,
                 InquiryResults.MobileOwnership.class,
                 "mobile-ownership"
         );
     }
 
-    @Override
-    public InquiryResults.BadCheque findBadCheques(InquiryRequests.BadCheque request) {
-        String nationalCode = normalizedNationalCode(request, InquiryRequests.BadCheque::nationalCode);
+    public ProviderExecution<InquiryResults.BadCheque> findBadCheques(InquiryRequests.BadCheque request) {
         return execute(
                 InquiryCapabilities.BAD_CHEQUE,
-                new InquiryRequests.BadCheque(nationalCode),
+                request,
                 InquiryResults.BadCheque.class,
                 "bad-cheque"
         );
     }
 
-    @Override
-    public InquiryResults.CivilRegistration findCivilRegistration(InquiryRequests.CivilRegistration request) {
-        String nationalCode = normalizedNationalCode(request, InquiryRequests.CivilRegistration::nationalCode);
+    public ProviderExecution<InquiryResults.CivilRegistration> findCivilRegistration(
+            InquiryRequests.CivilRegistration request
+    ) {
         return execute(
                 InquiryCapabilities.CIVIL_REGISTRATION,
-                new InquiryRequests.CivilRegistration(nationalCode),
+                request,
                 InquiryResults.CivilRegistration.class,
                 "civil-registration"
         );
     }
 
-    @Override
-    public InquiryResults.MilitaryStatus findMilitaryStatus(InquiryRequests.MilitaryStatus request) {
-        String nationalCode = normalizedNationalCode(request, InquiryRequests.MilitaryStatus::nationalCode);
+    public ProviderExecution<InquiryResults.MilitaryStatus> findMilitaryStatus(
+            InquiryRequests.MilitaryStatus request
+    ) {
         return execute(
                 InquiryCapabilities.MILITARY_STATUS,
-                new InquiryRequests.MilitaryStatus(nationalCode),
+                request,
                 InquiryResults.MilitaryStatus.class,
                 "military-status"
         );
     }
 
-    @Override
-    public InquiryResults.BankAccountStatus findBankAccountStatus(InquiryRequests.BankAccountStatus request) {
-        String nationalCode = normalizedNationalCode(request, InquiryRequests.BankAccountStatus::nationalCode);
+    public ProviderExecution<InquiryResults.BankAccountStatus> findBankAccountStatus(
+            InquiryRequests.BankAccountStatus request
+    ) {
         return execute(
                 InquiryCapabilities.BANK_ACCOUNT_STATUS,
-                new InquiryRequests.BankAccountStatus(nationalCode),
+                request,
                 InquiryResults.BankAccountStatus.class,
                 "bank-account-status"
         );
     }
 
-    @Override
-    public InquiryResults.BankingFacilities findBankingFacilities(InquiryRequests.BankingFacilities request) {
-        String nationalCode = normalizedNationalCode(request, InquiryRequests.BankingFacilities::nationalCode);
+    public ProviderExecution<InquiryResults.BankingFacilities> findBankingFacilities(
+            InquiryRequests.BankingFacilities request
+    ) {
         return execute(
                 InquiryCapabilities.BANKING_FACILITIES,
-                new InquiryRequests.BankingFacilities(nationalCode),
+                request,
                 InquiryResults.BankingFacilities.class,
                 "banking-facilities"
         );
     }
 
-    @Override
-    public InquiryResults.CreditRating findCreditRating(InquiryRequests.CreditRating request) {
-        String nationalCode = normalizedNationalCode(request, InquiryRequests.CreditRating::nationalCode);
+    public ProviderExecution<InquiryResults.CreditRating> findCreditRating(InquiryRequests.CreditRating request) {
         return execute(
                 InquiryCapabilities.CREDIT_RATING,
-                new InquiryRequests.CreditRating(nationalCode),
+                request,
                 InquiryResults.CreditRating.class,
                 "credit-rating"
         );
     }
 
-    private <C, R> R execute(String capability, C request, Class<R> resultType, String operation) {
+    private <C, R> ProviderExecution<R> execute(
+            String capability,
+            C request,
+            Class<R> resultType,
+            String operation
+    ) {
         try {
-            return providerRouter.execute(capability, request, resultType, true);
+            return providerRouter.executeWithProvider(capability, request, resultType, true);
         } catch (RuntimeException exception) {
             throw new IntegrationException("inquiry", operation, exception);
         }
     }
 
-    private static void requireNationalCode(String nationalCode) {
-        Preconditions.require(IranianIdentifiers.isValidNationalCode(nationalCode), "nationalCode is invalid");
-    }
-
-    private static <T> String normalizedNationalCode(T request, Function<T, String> nationalCodeExtractor) {
-        Preconditions.requireNonNull(request, "request");
-        String nationalCode = IranianIdentifiers.normalizeNationalCode(nationalCodeExtractor.apply(request));
-        requireNationalCode(nationalCode);
-        return nationalCode;
-    }
 }

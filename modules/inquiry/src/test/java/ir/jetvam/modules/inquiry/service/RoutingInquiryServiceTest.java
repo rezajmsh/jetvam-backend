@@ -2,6 +2,7 @@ package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.modules.inquiry.InquiryCapabilities;
 import ir.jetvam.modules.integration.routing.ProviderRouter;
+import ir.jetvam.modules.integration.routing.ProviderExecution;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -27,17 +28,15 @@ class RoutingInquiryServiceTest {
                 "A2", 8, BigDecimal.valueOf(720), "rating-1"
         );
         InquiryRequests.CreditRating normalized = new InquiryRequests.CreditRating("0067749828");
-        when(router.execute(
+        when(router.executeWithProvider(
                 InquiryCapabilities.CREDIT_RATING, normalized, InquiryResults.CreditRating.class, true
-        )).thenReturn(expected);
+        )).thenReturn(new ProviderExecution<>("BUREAU", expected));
         RoutingInquiryService service = new RoutingInquiryService(router);
 
-        InquiryResults.CreditRating result = service.findCreditRating(
-                new InquiryRequests.CreditRating("۰۰۶۷۷۴۹۸۲۸")
-        );
+        ProviderExecution<InquiryResults.CreditRating> result = service.findCreditRating(normalized);
 
-        assertThat(result).isEqualTo(expected);
-        verify(router).execute(
+        assertThat(result.result()).isEqualTo(expected);
+        verify(router).executeWithProvider(
                 InquiryCapabilities.CREDIT_RATING, normalized, InquiryResults.CreditRating.class, true
         );
     }
@@ -47,12 +46,14 @@ class RoutingInquiryServiceTest {
         ProviderRouter router = mock(ProviderRouter.class);
         InquiryRequests.BadCheque request = new InquiryRequests.BadCheque("0067749828");
         InquiryResults.BadCheque expected = new InquiryResults.BadCheque(0, BigDecimal.ZERO, "cheque-1");
-        when(router.execute(
+        when(router.executeWithProvider(
                 InquiryCapabilities.BAD_CHEQUE, request, InquiryResults.BadCheque.class, true
-        )).thenReturn(expected);
+        )).thenReturn(new ProviderExecution<>("BUREAU", expected));
         RoutingInquiryService service = new RoutingInquiryService(router);
 
-        assertThat(service.findBadCheques(request)).isEqualTo(expected);
-        verify(router).execute(InquiryCapabilities.BAD_CHEQUE, request, InquiryResults.BadCheque.class, true);
+        assertThat(service.findBadCheques(request).result()).isEqualTo(expected);
+        verify(router).executeWithProvider(
+                InquiryCapabilities.BAD_CHEQUE, request, InquiryResults.BadCheque.class, true
+        );
     }
 }

@@ -1,9 +1,9 @@
 package ir.jetvam.modules.inquiry.repository;
 
 import ir.jetvam.infra.persistence.repository.JetvamJpaRepository;
-import ir.jetvam.modules.inquiry.model.AsyncInquiryStatus;
 import ir.jetvam.modules.inquiry.model.InquiryCallbackStatus;
 import ir.jetvam.modules.inquiry.model.InquiryRequestEntity;
+import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
@@ -30,6 +30,13 @@ public interface InquiryRequestRepository extends JetvamJpaRepository<InquiryReq
             String correlationId
     );
 
+    Optional<InquiryRequestEntity> findFirstByInquiryCodeAndSubjectKeyAndStatusAndValidUntilAfterOrderByCompletedAtDesc(
+            String inquiryCode,
+            String subjectKey,
+            InquiryStatus status,
+            Instant now
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select request from InquiryRequestEntity request
@@ -37,7 +44,7 @@ public interface InquiryRequestRepository extends JetvamJpaRepository<InquiryReq
             order by request.nextAttemptAt, request.createdAt
             """)
     List<InquiryRequestEntity> findDue(
-            Collection<AsyncInquiryStatus> statuses,
+            Collection<InquiryStatus> statuses,
             Instant now,
             Pageable pageable
     );
@@ -49,7 +56,7 @@ public interface InquiryRequestRepository extends JetvamJpaRepository<InquiryReq
             order by request.processingStartedAt
             """)
     List<InquiryRequestEntity> findStale(
-            AsyncInquiryStatus status,
+            InquiryStatus status,
             Instant before,
             Pageable pageable
     );

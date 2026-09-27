@@ -1,6 +1,6 @@
 package ir.jetvam.modules.origination.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.time.ClockTimeProvider;
 import ir.jetvam.modules.assessment.service.DefaultEligibilityPolicyEvaluator;
 import ir.jetvam.modules.origination.model.ApplicationControlEntity;

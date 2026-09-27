@@ -8,6 +8,7 @@ package ir.jetvam.modules.inquiry.model;
  * @since 9/25/2026
  */
 public enum InquiryCallbackStatus {
+    NOT_REQUIRED,
     NOT_READY,
     PENDING,
     PROCESSING,

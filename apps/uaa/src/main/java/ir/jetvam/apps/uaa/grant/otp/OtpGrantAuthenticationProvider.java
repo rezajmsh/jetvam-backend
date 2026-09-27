@@ -3,6 +3,8 @@ package ir.jetvam.apps.uaa.grant.otp;
 import ir.jetvam.common.exception.ValidationException;
 import ir.jetvam.modules.identity.security.IdentityUserPrincipal;
 import ir.jetvam.modules.identity.service.CustomerAuthenticationService;
+import ir.jetvam.modules.identity.exception.CustomerAccountUnavailableException;
+import ir.jetvam.modules.identity.exception.CustomerRegistrationRequiredException;
 import ir.jetvam.infra.security.SecurityClaims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -61,6 +63,16 @@ public class OtpGrantAuthenticationProvider implements AuthenticationProvider {
         IdentityUserPrincipal user;
         try {
             user = customerAuthenticationService.authenticate(otpGrant.challengeId(), otpGrant.otp());
+        } catch (CustomerRegistrationRequiredException exception) {
+            throw oauthError(
+                    OtpGrantConstants.CUSTOMER_REGISTRATION_REQUIRED,
+                    "Customer registration must be completed before signing in"
+            );
+        } catch (CustomerAccountUnavailableException exception) {
+            throw oauthError(
+                    OtpGrantConstants.CUSTOMER_ACCOUNT_UNAVAILABLE,
+                    "Customer account is not available for sign-in; contact support"
+            );
         } catch (ValidationException exception) {
             throw oauthError(OAuth2ErrorCodes.INVALID_GRANT, "OTP is invalid or expired");
         }

@@ -67,14 +67,9 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
-  identity:
-    profile-api:
-      enabled: false
   security:
     resource-server:
       enabled: false
-    authorization-server:
-      enabled: true
   uaa:
     signing-key:
       key-store-location: ${JETVAM_JWT_KEYSTORE_LOCATION:}
@@ -169,11 +164,11 @@ jetvam:
       include-details: true
   persist:
     enabled: true
-    url: ${JETVAM_UAA_DB_URL:${JETVAM_DB_URL:jdbc:postgresql://localhost:5432/jetvam}}
-    username: ${JETVAM_UAA_DB_USERNAME:${JETVAM_DB_USERNAME:jetvam}}
-    password: ${JETVAM_UAA_DB_PASSWORD:${JETVAM_DB_PASSWORD:jetvam}}
+    url: ${JETVAM_DB_URL:jdbc:postgresql://localhost:5432/jetvam}
+    username: ${JETVAM_DB_USERNAME:jetvam}
+    password: ${JETVAM_DB_PASSWORD:jetvam}
     driver-class-name: org.postgresql.Driver
-    default-schema: jetvam_identity
+    default-schema: ${JETVAM_DB_SCHEMA:jetvam}
     pool:
       name: jetvam-uaa-pool
       minimum-idle: ${JETVAM_UAA_DB_POOL_MIN_SIZE:2}
@@ -192,6 +187,8 @@ jetvam:
       enabled: true
       locations: classpath:db/migration
       validate-on-migrate: false
+      out-of-order: true
+      ignore-migration-patterns: [ "*:missing" ]
   cache:
     enabled: true
     provider: ${JETVAM_CACHE_PROVIDER:local}

@@ -23,7 +23,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class DefaultDeferredInquiryService implements DeferredInquiryService {
 
-    private final InquiryService inquiryService;
+    private final RoutingInquiryService providerService;
     private final ProviderRouter providerRouter;
 
     @Override
@@ -86,60 +86,83 @@ public class DefaultDeferredInquiryService implements DeferredInquiryService {
         if (progress.score() != null) {
             facts.put("score", progress.score().toPlainString());
         }
+        if (progress.trackingCode() != null) {
+            facts.put("trackingId", progress.trackingCode());
+        }
         return DeferredInquiryModels.Result.completed(providerCode, progress.trackingCode(), facts);
     }
 
     private DeferredInquiryModels.Result badCheque(String nationalCode) {
-        InquiryResults.BadCheque result = inquiryService.findBadCheques(new InquiryRequests.BadCheque(nationalCode));
-        return completed(result.trackingId(), Map.of(
+        ProviderExecution<InquiryResults.BadCheque> execution = providerService.findBadCheques(
+                new InquiryRequests.BadCheque(nationalCode)
+        );
+        InquiryResults.BadCheque result = execution.result();
+        return completed(execution.providerCode(), result.trackingId(), factsWithTracking(Map.of(
                 "unsettledCount", Integer.toString(result.unsettledCount()),
-                "unsettledAmount", result.totalAmount().toPlainString()
-        ));
+                "totalAmount", result.totalAmount().toPlainString()
+        ), result.trackingId()));
     }
 
     private DeferredInquiryModels.Result civilRegistration(String nationalCode) {
-        InquiryResults.CivilRegistration result = inquiryService.findCivilRegistration(
+        ProviderExecution<InquiryResults.CivilRegistration> execution = providerService.findCivilRegistration(
                 new InquiryRequests.CivilRegistration(nationalCode)
         );
-        return completed(result.trackingId(), Map.of(
+        InquiryResults.CivilRegistration result = execution.result();
+        return completed(execution.providerCode(), result.trackingId(), factsWithTracking(Map.of(
                 "identityValid", Boolean.toString(result.identityValid()),
                 "alive", Boolean.toString(result.alive())
-        ));
+        ), result.trackingId()));
     }
 
     private DeferredInquiryModels.Result militaryStatus(String nationalCode) {
-        InquiryResults.MilitaryStatus result = inquiryService.findMilitaryStatus(
+        ProviderExecution<InquiryResults.MilitaryStatus> execution = providerService.findMilitaryStatus(
                 new InquiryRequests.MilitaryStatus(nationalCode)
         );
-        return completed(result.trackingId(), Map.of(
+        InquiryResults.MilitaryStatus result = execution.result();
+        return completed(execution.providerCode(), result.trackingId(), factsWithTracking(Map.of(
                 "statusCode", result.statusCode(),
                 "eligible", Boolean.toString(result.eligible())
-        ));
+        ), result.trackingId()));
     }
 
     private DeferredInquiryModels.Result bankAccountStatus(String nationalCode) {
-        InquiryResults.BankAccountStatus result = inquiryService.findBankAccountStatus(
+        ProviderExecution<InquiryResults.BankAccountStatus> execution = providerService.findBankAccountStatus(
                 new InquiryRequests.BankAccountStatus(nationalCode)
         );
-        return completed(result.trackingId(), Map.of(
+        InquiryResults.BankAccountStatus result = execution.result();
+        return completed(execution.providerCode(), result.trackingId(), factsWithTracking(Map.of(
                 "statusCode", result.statusCode(),
                 "active", Boolean.toString(result.active())
-        ));
+        ), result.trackingId()));
     }
 
     private DeferredInquiryModels.Result bankingFacilities(String nationalCode) {
-        InquiryResults.BankingFacilities result = inquiryService.findBankingFacilities(
+        ProviderExecution<InquiryResults.BankingFacilities> execution = providerService.findBankingFacilities(
                 new InquiryRequests.BankingFacilities(nationalCode)
         );
-        return completed(result.trackingId(), Map.of(
-                "directCount", Integer.toString(result.directFacilityCount()),
-                "indirectCount", Integer.toString(result.indirectFacilityCount()),
+        InquiryResults.BankingFacilities result = execution.result();
+        return completed(execution.providerCode(), result.trackingId(), factsWithTracking(Map.of(
+                "directFacilityCount", Integer.toString(result.directFacilityCount()),
+                "indirectFacilityCount", Integer.toString(result.indirectFacilityCount()),
                 "hasOverdueDebt", Boolean.toString(result.hasOverdueDebt()),
                 "overdueAmount", result.overdueAmount().toPlainString()
-        ));
+        ), result.trackingId()));
     }
 
-    private static DeferredInquiryModels.Result completed(String trackingId, Map<String, String> facts) {
-        return DeferredInquiryModels.Result.completed(null, trackingId, facts);
+    private static DeferredInquiryModels.Result completed(
+            String providerCode,
+            String trackingId,
+            Map<String, String> facts
+    ) {
+        return DeferredInquiryModels.Result.completed(providerCode, trackingId, facts);
+    }
+
+    private static Map<String, String> factsWithTracking(Map<String, String> facts, String trackingId) {
+        if (trackingId == null || trackingId.isBlank()) {
+            return facts;
+        }
+        Map<String, String> result = new LinkedHashMap<>(facts);
+        result.put("trackingId", trackingId);
+        return result;
     }
 }

@@ -18,7 +18,7 @@ class DefaultDeferredInquiryServiceTest {
     @Test
     void persistsProviderAffinityAcrossSubmitAndPollSteps() {
         ProviderRouter router = mock(ProviderRouter.class);
-        InquiryService synchronous = mock(InquiryService.class);
+        RoutingInquiryService providerService = mock(RoutingInquiryService.class);
         CreditRatingProtocol.Progress pending = new CreditRatingProtocol.Progress(
                 DeferredInquiryStatus.PENDING, "tracking-1", 120, null, null, null, null, null
         );
@@ -38,7 +38,7 @@ class DefaultDeferredInquiryServiceTest {
                 new CreditRatingProtocol.Poll("tracking-1"),
                 CreditRatingProtocol.Progress.class
         )).thenReturn(completed);
-        DefaultDeferredInquiryService service = new DefaultDeferredInquiryService(synchronous, router);
+        DefaultDeferredInquiryService service = new DefaultDeferredInquiryService(providerService, router);
 
         DeferredInquiryModels.Result submitted = service.execute(new DeferredInquiryModels.Command(
                 InquiryCapabilities.CREDIT_RATING, "0067749828", null, null
