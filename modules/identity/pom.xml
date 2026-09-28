@@ -9,6 +9,7 @@
     <dependencies>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-common</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-persistence</artifactId></dependency>
+        <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-infra-security</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-settings</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-otp</artifactId></dependency>
         <dependency><groupId>ir.jetvam</groupId><artifactId>jetvam-module-inquiry</artifactId></dependency>

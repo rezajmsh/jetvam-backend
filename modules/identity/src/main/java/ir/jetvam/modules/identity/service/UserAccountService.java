@@ -19,7 +19,11 @@ public interface UserAccountService {
 
     UserView get(UUID id);
 
+    UserPage search(UserSearchQuery query);
+
     UserView changeStatus(UUID id, UserAccountStatus status);
+
+    UserView unlock(UUID id);
 
     boolean usernameExists(String username);
 }

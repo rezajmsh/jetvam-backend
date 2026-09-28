@@ -15,6 +15,7 @@ public final class SecurityClaims {
     public static final String ROLES = "roles";
     public static final String PERMISSIONS = "permissions";
     public static final String AUTHENTICATION_METHODS = "amr";
+    public static final String AUTHENTICATION_VERSION = "auth_version";
 
     private SecurityClaims() {
     }

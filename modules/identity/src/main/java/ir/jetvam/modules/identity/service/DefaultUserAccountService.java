@@ -1,12 +1,16 @@
 package ir.jetvam.modules.identity.service;
 
 import ir.jetvam.common.exception.ConflictException;
+import ir.jetvam.common.exception.IllegalStateTransitionException;
 import ir.jetvam.common.exception.ResourceNotFoundException;
+import ir.jetvam.common.exception.ValidationException;
 import ir.jetvam.common.security.UserCategory;
 import ir.jetvam.common.text.TextUtils;
+import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.common.validation.IranianIdentifiers;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.modules.identity.IdentityRoles;
+import ir.jetvam.modules.identity.IdentityErrorCode;
 import ir.jetvam.modules.identity.model.UserAccountStatus;
 import ir.jetvam.modules.identity.persistence.CustomerProfileEntity;
 import ir.jetvam.modules.identity.persistence.IndividualPartyEntity;
@@ -20,10 +24,14 @@ import ir.jetvam.modules.identity.repository.RoleRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +55,8 @@ public class DefaultUserAccountService implements UserAccountService {
     private final RoleRepository roleRepository;
     private final CustomerProfileRepository customerProfileRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy passwordPolicy;
+    private final TimeProvider timeProvider;
 
     @Override
     @Transactional
@@ -81,7 +91,7 @@ public class DefaultUserAccountService implements UserAccountService {
         UserAccountEntity account = userRepository.save(new UserAccountEntity(
                 individual,
                 username,
-                passwordEncoder.encode(command.password()),
+                passwordEncoder.encode(passwordPolicy.validate(command.password())),
                 mobile,
                 command.categories(),
                 roles
@@ -89,7 +99,7 @@ public class DefaultUserAccountService implements UserAccountService {
         if (command.categories().contains(UserCategory.CUSTOMER)) {
             customerProfileRepository.save(new CustomerProfileEntity(individual));
         }
-        return toView(account, individual);
+        return toView(account);
     }
 
     @Override
@@ -99,8 +109,7 @@ public class DefaultUserAccountService implements UserAccountService {
         Preconditions.requireNonNull(command.partyId(), "partyId");
         String username = Preconditions.requireText(command.username(), "username").strip().toLowerCase(Locale.ROOT);
         String mobile = IranianIdentifiers.normalizeMobileNumber(command.mobile());
-        String password = Preconditions.requireText(command.password(), "password");
-        Preconditions.require(password.length() >= 10, "password must contain at least 10 characters");
+        String password = passwordPolicy.validate(command.password());
         Preconditions.require(!command.categories().isEmpty(), "at least one user category is required");
         validatePasswordAccountCategories(command.categories());
         validateBuiltInRoleAssignments(command.categories(), command.roleCodes());
@@ -125,8 +134,7 @@ public class DefaultUserAccountService implements UserAccountService {
                 command.categories(),
                 roles
         ));
-        IndividualPartyEntity individual = individualRepository.findById(party.getId()).orElse(null);
-        return toView(account, individual);
+        return toView(account);
     }
 
     @Override
@@ -134,19 +142,59 @@ public class DefaultUserAccountService implements UserAccountService {
     public UserView get(UUID id) {
         UserAccountEntity account = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("user", id));
-        IndividualPartyEntity individual = individualRepository.findById(account.getParty().getId()).orElse(null);
-        return toView(account, individual);
+        return toView(account);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserPage search(UserSearchQuery query) {
+        Preconditions.requireNonNull(query, "query");
+        Page<UserAccountEntity> result = userRepository.search(
+                query.text(),
+                query.status(),
+                query.category(),
+                PageRequest.of(query.page(), query.size(), Sort.by(Sort.Direction.DESC, "createdAt"))
+        );
+        List<UserView> users = result.getContent().stream()
+                .map(DefaultUserAccountService::toView)
+                .toList();
+        return new UserPage(users, result.getTotalElements(), result.getNumber(), result.getSize(),
+                result.getTotalPages());
     }
 
     @Override
     @Transactional
     public UserView changeStatus(UUID id, UserAccountStatus status) {
         Preconditions.requireNonNull(status, "status");
-        UserAccountEntity account = userRepository.findById(id)
+        if (status != UserAccountStatus.ACTIVE && status != UserAccountStatus.DISABLED) {
+            throw new ValidationException(
+                    IdentityErrorCode.ACCOUNT_STATUS_CHANGE_NOT_ALLOWED,
+                    "Administrative status changes support only ACTIVE and DISABLED",
+                    List.of()
+            );
+        }
+        UserAccountEntity account = userRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResourceNotFoundException("user", id));
-        account.changeStatus(status);
-        IndividualPartyEntity individual = individualRepository.findById(account.getParty().getId()).orElse(null);
-        return toView(account, individual);
+        if (status == UserAccountStatus.ACTIVE && account.getStatus() == UserAccountStatus.LOCKED) {
+            throw new IllegalStateTransitionException(account.getStatus(), status);
+        }
+        account.changeStatus(status, timeProvider.now());
+        return toView(account);
+    }
+
+    @Override
+    @Transactional
+    public UserView unlock(UUID id) {
+        UserAccountEntity account = userRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("user", id));
+        if (account.getStatus() == UserAccountStatus.ACTIVE) {
+            return toView(account);
+        }
+        if (account.getStatus() != UserAccountStatus.LOCKED) {
+            throw new IllegalStateTransitionException(account.getStatus(), UserAccountStatus.ACTIVE);
+        }
+        account.unlock(timeProvider.now());
+        return toView(account);
     }
 
     @Override
@@ -169,8 +217,7 @@ public class DefaultUserAccountService implements UserAccountService {
         );
         Preconditions.requireText(command.firstName(), "firstName");
         Preconditions.requireText(command.lastName(), "lastName");
-        String password = Preconditions.requireText(command.password(), "password");
-        Preconditions.require(password.length() >= 10, "password must contain at least 10 characters");
+        passwordPolicy.validate(command.password());
         Preconditions.require(!command.categories().isEmpty(), "at least one user category is required");
         validatePasswordAccountCategories(command.categories());
         validateBuiltInRoleAssignments(command.categories(), command.roleCodes());
@@ -233,7 +280,10 @@ public class DefaultUserAccountService implements UserAccountService {
         }
     }
 
-    private static UserView toView(UserAccountEntity account, IndividualPartyEntity individual) {
+    private static UserView toView(UserAccountEntity account) {
+        IndividualPartyEntity individual = account.getParty() instanceof IndividualPartyEntity party
+                ? party
+                : null;
         return new UserView(
                 account.getId(),
                 account.getParty().getId(),

@@ -2,6 +2,8 @@ package ir.jetvam.apps.uaa;
 
 import ir.jetvam.modules.inquiry.service.PersistentInquiryService;
 import ir.jetvam.modules.settings.api.SettingManagementController;
+import ir.jetvam.apps.uaa.user.AccountController;
+import ir.jetvam.apps.uaa.user.UaaUserManagementService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -43,5 +45,7 @@ class JetvamUaaApplicationContextTest {
         assertThat(context.getBean(ObjectMapper.class)).isNotNull();
         assertThat(context.getBean(PersistentInquiryService.class)).isNotNull();
         assertThat(context.getBean(SettingManagementController.class)).isNotNull();
+        assertThat(context.getBean(AccountController.class)).isNotNull();
+        assertThat(context.getBean(UaaUserManagementService.class)).isNotNull();
     }
 }

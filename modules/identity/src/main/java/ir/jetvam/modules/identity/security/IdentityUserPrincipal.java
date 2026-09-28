@@ -28,6 +28,7 @@ public final class IdentityUserPrincipal implements UserDetails {
     private final String username;
     private final String password;
     private final UserAccountStatus status;
+    private final long authenticationVersion;
     private final Set<UserCategory> categories;
     private final Set<String> roles;
     private final Set<String> permissions;
@@ -39,6 +40,7 @@ public final class IdentityUserPrincipal implements UserDetails {
             String username,
             String password,
             UserAccountStatus status,
+            long authenticationVersion,
             Set<UserCategory> categories,
             Set<String> roles,
             Set<String> permissions
@@ -48,6 +50,7 @@ public final class IdentityUserPrincipal implements UserDetails {
         this.username = username;
         this.password = password == null ? "{noop}<password-login-disabled>" : password;
         this.status = status;
+        this.authenticationVersion = authenticationVersion;
         this.categories = Set.copyOf(categories);
         this.roles = Set.copyOf(roles);
         this.permissions = Set.copyOf(permissions);
@@ -70,6 +73,7 @@ public final class IdentityUserPrincipal implements UserDetails {
                 login,
                 account.getPasswordHash(),
                 account.getStatus(),
+                account.getAuthenticationVersion(),
                 account.getCategories(),
                 roles,
                 permissions
@@ -94,6 +98,10 @@ public final class IdentityUserPrincipal implements UserDetails {
 
     public Set<String> permissions() {
         return permissions;
+    }
+
+    public long authenticationVersion() {
+        return authenticationVersion;
     }
 
     @Override

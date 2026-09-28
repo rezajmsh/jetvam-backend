@@ -11,6 +11,9 @@ public final class IdentityPermissions {
     public static final String BACKOFFICE_ACCESS = "backoffice:access";
     public static final String IDENTITY_USER_READ = "identity:user:read";
     public static final String IDENTITY_USER_WRITE = "identity:user:write";
+    public static final String IDENTITY_USER_CREDENTIAL_RESET = "identity:user:credential:reset";
+    public static final String IDENTITY_ACCOUNT_READ_SELF = "identity:account:read:self";
+    public static final String IDENTITY_CREDENTIAL_WRITE_SELF = "identity:credential:write:self";
     public static final String IDENTITY_ROLE_MANAGE = "identity:role:manage";
     public static final String IDENTITY_CLIENT_MANAGE = "identity:client:manage";
     public static final String SETTINGS_READ = "settings:read";

@@ -20,6 +20,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
 
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -60,12 +61,14 @@ public class UserAccountEntity extends AbstractAuditableUuidEntity {
     private UserAccountStatus status;
 
     @ElementCollection(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @CollectionTable(name = "iam_user_category", joinColumns = @JoinColumn(name = "user_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "category", nullable = false, length = 30)
     private Set<UserCategory> categories = new LinkedHashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
+    @BatchSize(size = 50)
     @JoinTable(
             name = "iam_user_role",
             joinColumns = @JoinColumn(name = "user_id"),
@@ -81,6 +84,12 @@ public class UserAccountEntity extends AbstractAuditableUuidEntity {
 
     @Column(name = "locked_until")
     private Instant lockedUntil;
+
+    @Column(name = "authentication_changed_at")
+    private Instant authenticationChangedAt;
+
+    @Column(name = "authentication_version", nullable = false)
+    private long authenticationVersion;
 
     public UserAccountEntity(
             PartyEntity party,
@@ -150,12 +159,34 @@ public class UserAccountEntity extends AbstractAuditableUuidEntity {
         this.status = UserAccountStatus.ACTIVE;
     }
 
-    public void changeStatus(UserAccountStatus status) {
-        this.status = status;
+    public void changeStatus(UserAccountStatus status, Instant changedAt) {
+        UserAccountStatus requested = Preconditions.requireNonNull(status, "status");
+        if (this.status == requested) {
+            return;
+        }
+        this.status = requested;
+        this.authenticationChangedAt = Preconditions.requireNonNull(changedAt, "changedAt");
+        this.authenticationVersion++;
+        if (status != UserAccountStatus.LOCKED) {
+            this.failedLoginAttempts = 0;
+            this.lockedUntil = null;
+        }
     }
 
-    public void changePassword(String passwordHash) {
-        this.passwordHash = passwordHash;
+    public void changePassword(String passwordHash, Instant changedAt) {
+        this.passwordHash = Preconditions.requireText(passwordHash, "passwordHash");
+        this.authenticationChangedAt = Preconditions.requireNonNull(changedAt, "changedAt");
+        this.authenticationVersion++;
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
+
+    public void unlock(Instant changedAt) {
+        this.status = UserAccountStatus.ACTIVE;
+        this.authenticationChangedAt = Preconditions.requireNonNull(changedAt, "changedAt");
+        this.authenticationVersion++;
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
     }
 
     public void recordSuccessfulLogin(Instant loginAt) {

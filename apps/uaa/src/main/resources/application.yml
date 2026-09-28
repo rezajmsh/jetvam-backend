@@ -20,7 +20,7 @@ springdoc:
   group-configs:
     - group: identity
       display-name: Identity and authentication
-      paths-to-match: [/api/v1/customer/**, /api/v1/users/**, /oauth2/**]
+      paths-to-match: [/api/v1/customer/**, /api/v1/users/**, /api/v1/account/**, /oauth2/**]
     - group: settings
       display-name: Runtime settings
       paths-to-match: [/api/v1/settings/**]

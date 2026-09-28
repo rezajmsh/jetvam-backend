@@ -8,6 +8,7 @@ import ir.jetvam.modules.identity.repository.RoleRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import ir.jetvam.common.time.TimeProvider;
 
 import java.util.Set;
 
@@ -86,7 +87,9 @@ class UserAccountServiceTest {
                 mock(UserAccountRepository.class),
                 mock(RoleRepository.class),
                 mock(CustomerProfileRepository.class),
-                PasswordEncoderFactories.createDelegatingPasswordEncoder()
+                PasswordEncoderFactories.createDelegatingPasswordEncoder(),
+                new DefaultPasswordPolicy(),
+                mock(TimeProvider.class)
         );
     }
 }

@@ -98,6 +98,7 @@ public class PasswordGrantAuthenticationProvider implements AuthenticationProvid
                         new ArrayList<>(user.categories().stream().map(Enum::name).toList()))
                 .attribute(SecurityClaims.ROLES, new ArrayList<>(user.roles()))
                 .attribute(SecurityClaims.PERMISSIONS, new ArrayList<>(user.permissions()))
+                .attribute(SecurityClaims.AUTHENTICATION_VERSION, user.authenticationVersion())
                 .attribute(SecurityClaims.AUTHENTICATION_METHODS, new ArrayList<>(passwordGrant.challengeId() == null
                         ? Set.of("pwd")
                         : Set.of("pwd", "otp")));

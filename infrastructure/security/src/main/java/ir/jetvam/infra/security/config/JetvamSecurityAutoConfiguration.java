@@ -1,6 +1,7 @@
 package ir.jetvam.infra.security.config;
 
 import ir.jetvam.infra.security.JetvamJwtAuthenticationConverter;
+import ir.jetvam.infra.security.AuthenticatedUserValidator;
 import ir.jetvam.infra.security.web.JetvamAccessDeniedHandler;
 import ir.jetvam.infra.security.web.JetvamAuthenticationEntryPoint;
 import ir.jetvam.infra.security.web.SecurityErrorWriter;
@@ -20,6 +21,8 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.List;
+
 /**
  * Auto-configures JWT validation, principal mapping and stateless API protection.
  * Applications activate it by providing standard Spring resource-server settings.
@@ -36,8 +39,10 @@ public class JetvamSecurityAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    JetvamJwtAuthenticationConverter jetvamJwtAuthenticationConverter() {
-        return new JetvamJwtAuthenticationConverter();
+    JetvamJwtAuthenticationConverter jetvamJwtAuthenticationConverter(
+            List<AuthenticatedUserValidator> validators
+    ) {
+        return new JetvamJwtAuthenticationConverter(validators);
     }
 
     @Bean

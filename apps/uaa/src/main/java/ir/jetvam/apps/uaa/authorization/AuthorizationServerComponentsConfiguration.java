@@ -81,6 +81,7 @@ public class AuthorizationServerComponentsConfiguration {
                 );
                 context.getClaims().claim(SecurityClaims.ROLES, user.roles());
                 context.getClaims().claim(SecurityClaims.PERMISSIONS, user.permissions());
+                context.getClaims().claim(SecurityClaims.AUTHENTICATION_VERSION, user.authenticationVersion());
             } else if (hasPersistedUserClaims(context.getAuthorization())) {
                 OAuth2Authorization authorization = context.getAuthorization();
                 context.getClaims().claim(SecurityClaims.USER_ID,
@@ -93,6 +94,8 @@ public class AuthorizationServerComponentsConfiguration {
                         authorization.getAttribute(SecurityClaims.ROLES));
                 context.getClaims().claim(SecurityClaims.PERMISSIONS,
                         authorization.getAttribute(SecurityClaims.PERMISSIONS));
+                context.getClaims().claim(SecurityClaims.AUTHENTICATION_VERSION,
+                        authorization.getAttribute(SecurityClaims.AUTHENTICATION_VERSION));
             } else if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
                 context.getClaims().claim(SecurityClaims.CATEGORIES, Set.of(UserCategory.SERVICE.name()));
                 context.getClaims().claim(SecurityClaims.ROLES, Set.of(IdentityRoles.SERVICE));

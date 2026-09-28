@@ -10,7 +10,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -26,6 +28,15 @@ import java.util.stream.Collectors;
 public final class JetvamJwtAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private final JwtGrantedAuthoritiesConverter scopeConverter = new JwtGrantedAuthoritiesConverter();
+    private final List<AuthenticatedUserValidator> validators;
+
+    public JetvamJwtAuthenticationConverter() {
+        this(List.of());
+    }
+
+    public JetvamJwtAuthenticationConverter(List<AuthenticatedUserValidator> validators) {
+        this.validators = List.copyOf(validators);
+    }
 
     @Override
     public AbstractAuthenticationToken convert(Jwt jwt) {
@@ -49,6 +60,7 @@ public final class JetvamJwtAuthenticationConverter implements Converter<Jwt, Ab
                 permissions,
                 selectedAttributes(jwt)
         );
+        validators.forEach(validator -> validator.validate(principal, jwt.getIssuedAt()));
         return new JetvamAuthenticationToken(principal, jwt, authorities);
     }
 
@@ -72,11 +84,15 @@ public final class JetvamJwtAuthenticationConverter implements Converter<Jwt, Ab
     }
 
     private static Map<String, Object> selectedAttributes(Jwt jwt) {
-        return Map.of(
-                "issuer", jwt.getIssuer() == null ? "" : jwt.getIssuer().toString(),
-                "clientId", jwt.getClaimAsString("client_id") == null ? "" : jwt.getClaimAsString("client_id"),
-                SecurityClaims.AUTHENTICATION_METHODS,
-                strings(jwt.getClaims().get(SecurityClaims.AUTHENTICATION_METHODS))
-        );
+        Map<String, Object> attributes = new LinkedHashMap<>();
+        attributes.put("issuer", jwt.getIssuer() == null ? "" : jwt.getIssuer().toString());
+        attributes.put("clientId", jwt.getClaimAsString("client_id") == null ? "" : jwt.getClaimAsString("client_id"));
+        attributes.put(SecurityClaims.AUTHENTICATION_METHODS,
+                strings(jwt.getClaims().get(SecurityClaims.AUTHENTICATION_METHODS)));
+        Object authenticationVersion = jwt.getClaims().get(SecurityClaims.AUTHENTICATION_VERSION);
+        if (authenticationVersion != null) {
+            attributes.put(SecurityClaims.AUTHENTICATION_VERSION, authenticationVersion);
+        }
+        return Map.copyOf(attributes);
     }
 }

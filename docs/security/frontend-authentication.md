@@ -5,7 +5,7 @@
 endpoint پیاده‌سازی کنند.
 
 - نسخه قرارداد: `1.0`
-- تاریخ به‌روزرسانی: `2026-09-24`
+- تاریخ به‌روزرسانی: `2026-09-28`
 - سرویس صادرکننده توکن: `jetvam-uaa`
 
 ## 1. اطلاعات پایه
@@ -366,7 +366,23 @@ Refresh tokenها چرخشی هستند. بعد از refresh موفق:
 برای جلوگیری از چند refresh هم‌زمان، کلاینت باید درخواست‌های refresh را single-flight کند؛ یعنی در
 هر لحظه فقط یک refresh فعال باشد و سایر درخواست‌ها منتظر نتیجه همان درخواست بمانند.
 
-## 12. claimهای JWT
+## 12. خروج از حساب
+
+خروج باید قبل از پاک‌کردن state محلی به UAA اعلام شود:
+
+```http
+POST /api/v1/account/logout HTTP/1.1
+Host: localhost:8081
+Authorization: Bearer <access-token>
+```
+
+پاسخ موفق `204 No Content` است. این عملیات تمام authorizationهای قابل تمدید حساب را حذف می‌کند؛
+بنابراین refresh tokenهای آن حساب دیگر قابل استفاده نیستند. کلاینت باید چه درخواست موفق شود و چه به
+علت خطای شبکه شکست بخورد، tokenهای محلی را پاک کند. access tokenهای JWT صادرشده به دلیل اعتبارسنجی
+آفلاین تا پایان عمر کوتاه خود معتبر می‌مانند؛ برای ابطال آنی آن‌ها به blacklist یا introspection در
+تمام resource serverها نیاز است.
+
+## 13. claimهای JWT
 
 access token علاوه بر claimهای استاندارد JWT شامل موارد زیر است:
 
@@ -385,9 +401,9 @@ access token علاوه بر claimهای استاندارد JWT شامل موا�
 فرانت می‌تواند role و permission را برای نمایش یا پنهان‌کردن اجزای UI استفاده کند، اما نباید آن‌ها
 را مبنای امنیت نهایی قرار دهد. مجوز نهایی همیشه در backend کنترل می‌شود.
 
-## 13. مدیریت خطاها
+## 14. مدیریت خطاها
 
-### 13.1. خطاهای token endpoint
+### 14.1. خطاهای token endpoint
 
 | `error` | معنی | رفتار پیشنهادی فرانت |
 | --- | --- | --- |
@@ -403,7 +419,7 @@ access token علاوه بر claimهای استاندارد JWT شامل موا�
 برای جلوگیری از user enumeration، در خطای `invalid_grant` نباید به کاربر گفته شود username، پسورد،
 OTP یا وضعیت حساب دقیقاً کدام‌یک نامعتبر بوده است.
 
-### 13.2. خطاهای REST مربوط به OTP و ثبت‌نام
+### 14.2. خطاهای REST مربوط به OTP و ثبت‌نام
 
 endpointهای `/api/v1/**` از envelope عمومی API استفاده می‌کنند. کلاینت باید HTTP status و `error.code`
 را بررسی کند. وضعیت‌های مهم:
@@ -435,10 +451,12 @@ endpointهای `/api/v1/**` از envelope عمومی API استفاده می‌�
 | `429` | محدودیت درخواست OTP رد شده است |
 | `500/503` | خطای موقت سرور یا سرویس بیرونی |
 
-## 14. نگهداری امن توکن و credential
+## 15. نگهداری امن توکن و credential
 
 - پسورد و OTP هرگز در log، analytics، crash report یا error monitoring ثبت نشوند.
 - refresh token در `localStorage` نگهداری نشود.
+- اگر یک SPA استاتیک هنوز BFF ندارد، `sessionStorage` فقط به‌عنوان راهکار میانی برای حفظ نشست همان
+  tab قابل استفاده است؛ این فضا HttpOnly نیست و در برابر XSS از token محافظت نمی‌کند.
 - در معماری وب ترجیحی، refresh token داخل session امن BFF یا cookie با ویژگی‌های `HttpOnly`،
   `Secure` و `SameSite` مناسب نگهداری شود.
 - در موبایل از secure storage سیستم‌عامل استفاده شود.
@@ -447,7 +465,7 @@ endpointهای `/api/v1/**` از envelope عمومی API استفاده می‌�
 - با خروج کاربر، tokenها و تمام stateهای موقت شامل `challenge_id` از کلاینت پاک شوند.
 - کلاینت نباید ساعت محلی را منبع قطعی اعتبار token بداند؛ پاسخ 401 سرور باید مدیریت شود.
 
-## 15. چک‌لیست تحویل کلاینت
+## 16. چک‌لیست تحویل کلاینت
 
 - [ ] انتخاب `client_id` براساس پرتال، نه براساس حدس از username
 - [ ] ارسال token request با `application/x-www-form-urlencoded`
@@ -459,8 +477,9 @@ endpointهای `/api/v1/**` از envelope عمومی API استفاده می‌�
 - [ ] ارسال access token فقط در header استاندارد Authorization
 - [ ] عدم ذخیره credential یا token در log و analytics
 - [ ] عدم اتکا به roleهای سمت فرانت برای امنیت واقعی
+- [ ] فراخوانی logout سمت UAA و پاک‌کردن قطعی state محلی
 
-## 16. خلاصه بسیار کوتاه برای پیاده‌سازی
+## 17. خلاصه بسیار کوتاه برای پیاده‌سازی
 
 ```text
 مشتری:
@@ -475,3 +494,35 @@ endpointهای `/api/v1/**` از envelope عمومی API استفاده می‌�
   POST /oauth2/token با client_id=jetvam-merchant-portal و PASSWORD_GRANT
   اگر second_factor_required بود، همان request با challenge_id و otp تکرار شود
 ```
+
+## 18. مدیریت حساب‌های کاربری
+
+APIهای مدیریت حساب در UAA ارائه می‌شوند و به نقش مدیریتی و permission ریزدانه نیاز دارند:
+
+```text
+GET   /api/v1/users
+GET   /api/v1/users/{userId}
+POST  /api/v1/users
+POST  /api/v1/users/parties/{partyId}/accounts
+PATCH /api/v1/users/{userId}/status
+POST  /api/v1/users/{userId}/unlock
+PUT   /api/v1/users/{userId}/password
+```
+
+تغییر وضعیت مدیریتی فقط مقادیر `ACTIVE` و `DISABLED` را می‌پذیرد. وضعیت `LOCKED` فقط از مسیر
+امنیتی ایجاد می‌شود و با endpoint مستقل `unlock` رفع می‌شود. مدیر نمی‌تواند حساب خودش را غیرفعال
+کند یا از endpoint مدیریتی برای reset رمز خودش استفاده کند.
+
+عملیات حساب جاری:
+
+```text
+GET /api/v1/account
+PUT /api/v1/account/password
+```
+
+تغییر رمز حساب جاری به رمز فعلی نیاز دارد. مشتریان OTP-based مجوز تغییر یا reset رمز ندارند. پس از
+تغییر رمز، reset، disable یا unlock، تمام authorizationهای قابل تمدید حذف می‌شوند و نسخه تغییرات
+امنیتی حساب نیز افزایش می‌یابد. Resource serverها این نسخه و وضعیت `ACTIVE` را هنگام پذیرش JWT
+کنترل می‌کنند؛ در نتیجه access tokenهای صادرشده پیش از تغییر نیز بلافاصله نامعتبر می‌شوند.
+
+رمز خام، رمز قبلی و hash رمز نباید در response، audit، log یا metric ثبت شوند.

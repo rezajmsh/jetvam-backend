@@ -98,6 +98,7 @@ public class OtpGrantAuthenticationProvider implements AuthenticationProvider {
                         new ArrayList<>(user.categories().stream().map(Enum::name).toList()))
                 .attribute(SecurityClaims.ROLES, new ArrayList<>(user.roles()))
                 .attribute(SecurityClaims.PERMISSIONS, new ArrayList<>(user.permissions()))
+                .attribute(SecurityClaims.AUTHENTICATION_VERSION, user.authenticationVersion())
                 .attribute(SecurityClaims.AUTHENTICATION_METHODS, new ArrayList<>(Set.of("otp")));
         OAuth2Authorization authorization = authorizationBuilder.build();
         OAuth2TokenContext accessContext = tokenContext(
