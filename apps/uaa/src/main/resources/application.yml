@@ -94,6 +94,10 @@ jetvam:
     max-attempts: ${JETVAM_OTP_MAX_ATTEMPTS:5}
     max-challenges-per-window: ${JETVAM_OTP_MAX_CHALLENGES_PER_WINDOW:5}
     hmac-secret: ${JETVAM_OTP_HMAC_SECRET:ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEF}
+    development-bypass:
+      enabled: ${JETVAM_OTP_DEVELOPMENT_BYPASS_ENABLED:true}
+      code: ${JETVAM_OTP_DEVELOPMENT_BYPASS_CODE:111111}
+      environment: ${JETVAM_ENVIRONMENT:local}
   http-client:
     connect-timeout: ${JETVAM_HTTP_CONNECT_TIMEOUT:3s}
     read-timeout: ${JETVAM_HTTP_READ_TIMEOUT:5s}

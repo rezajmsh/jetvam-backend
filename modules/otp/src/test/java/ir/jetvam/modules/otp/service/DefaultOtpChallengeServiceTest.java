@@ -41,13 +41,14 @@ class DefaultOtpChallengeServiceTest {
     private static final OtpPurpose LOGIN = new OtpPurpose("LOGIN", "test.login");
     private OtpChallengeRepository repository;
     private NotificationService notificationService;
+    private OtpProperties properties;
     private DefaultOtpChallengeService service;
 
     @BeforeEach
     void setUp() {
         repository = mock(OtpChallengeRepository.class);
         notificationService = mock(NotificationService.class);
-        OtpProperties properties = new OtpProperties();
+        properties = new OtpProperties();
         properties.setHmacSecret("0123456789abcdef0123456789abcdef");
         when(repository.saveAndFlush(any(OtpChallengeEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         service = new DefaultOtpChallengeService(
@@ -104,5 +105,27 @@ class DefaultOtpChallengeServiceTest {
                 .hasMessage("OTP is invalid or expired");
         assertThat(challenge.getAttemptsRemaining()).isEqualTo(4);
         verify(repository, times(2)).saveAndFlush(challenge);
+    }
+
+    @Test
+    void usesConfiguredDevelopmentCodeWithoutBypassingChallengeRules() {
+        properties.getDevelopmentBypass().setEnabled(true);
+        properties.getDevelopmentBypass().setCode("654321");
+
+        service.issue("09121234567", null, LOGIN);
+
+        ArgumentCaptor<NotificationCommand> notificationCaptor = ArgumentCaptor.forClass(NotificationCommand.class);
+        verify(notificationService).enqueue(notificationCaptor.capture());
+        assertThat(notificationCaptor.getValue().parameters().get("code")).isEqualTo("654321");
+
+        ArgumentCaptor<OtpChallengeEntity> challengeCaptor = ArgumentCaptor.forClass(OtpChallengeEntity.class);
+        verify(repository).saveAndFlush(challengeCaptor.capture());
+        OtpChallengeEntity challenge = challengeCaptor.getValue();
+        UUID challengeId = UUID.randomUUID();
+        when(repository.findByIdForUpdate(challengeId)).thenReturn(Optional.of(challenge));
+
+        assertThat(service.consume(challengeId, "654321", LOGIN))
+                .isEqualTo(new OtpVerificationData("09121234567", null));
+        assertThat(challenge.getStatus()).isEqualTo(OtpStatus.CONSUMED);
     }
 }

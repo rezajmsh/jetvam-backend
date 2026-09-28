@@ -69,7 +69,7 @@ public class DefaultOtpChallengeService implements OtpChallengeService {
             );
         }
 
-        String code = generateCode(settings.getCodeLength());
+        String code = issuanceCode(settings);
         OtpChallengeEntity challenge = repository.saveAndFlush(new OtpChallengeEntity(
                 mobile,
                 nationalCode,
@@ -156,6 +156,21 @@ public class DefaultOtpChallengeService implements OtpChallengeService {
         String secret = Preconditions.requireText(properties.getHmacSecret(), "jetvam.otp.hmac-secret");
         Preconditions.require(secret.length() >= 32, "OTP HMAC secret must contain at least 32 characters");
         return properties;
+    }
+
+    private static String issuanceCode(OtpProperties settings) {
+        if (settings.getDevelopmentBypass().isEnabled()) {
+            String code = Preconditions.requireText(
+                    settings.getDevelopmentBypass().getCode(),
+                    "jetvam.otp.development-bypass.code"
+            );
+            Preconditions.require(
+                    code.matches("\\d{" + settings.getCodeLength() + "}"),
+                    "OTP development bypass code must contain exactly " + settings.getCodeLength() + " digits"
+            );
+            return code;
+        }
+        return generateCode(settings.getCodeLength());
     }
 
     private void expireForResend(OtpChallengeEntity challenge, Instant now) {

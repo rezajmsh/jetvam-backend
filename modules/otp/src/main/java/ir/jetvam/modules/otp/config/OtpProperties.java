@@ -25,4 +25,21 @@ public class OtpProperties {
     private int maxAttempts = 5;
     private int maxChallengesPerWindow = 5;
     private String hmacSecret;
+    private final DevelopmentBypass developmentBypass = new DevelopmentBypass();
+
+    /**
+     * Configures a deterministic OTP code for environments without an SMS provider.
+     * The owning validator prevents this facility from being enabled outside explicitly allowed environments.
+     *
+     * @author reza jamshidi
+     * @since 9/28/2026
+     */
+    @Getter
+    @Setter
+    public static class DevelopmentBypass {
+
+        private boolean enabled;
+        private String code = "111111";
+        private String environment = "local";
+    }
 }

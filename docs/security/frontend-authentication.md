@@ -64,6 +64,21 @@ DEFAULT_SCOPE  = jetvam.api offline_access
 
 فرانت باید grant typeها را دقیقاً با همین مقدار ارسال کند.
 
+### کد ثابت OTP در محیط توسعه
+
+تا قبل از راه‌اندازی provider پیامک، می‌توان UAA را در محیط local با کد ثابت اجرا کرد:
+
+```text
+JETVAM_OTP_DEVELOPMENT_BYPASS_ENABLED=true
+JETVAM_OTP_DEVELOPMENT_BYPASS_CODE=111111
+JETVAM_ENVIRONMENT=local
+```
+
+در این حالت challenge، purpose، زمان انقضا، محدودیت تعداد تلاش و یک‌بارمصرف بودن OTP همچنان اعمال
+می‌شوند و فقط کد تولیدشده ثابت است. کد در پاسخ API یا log نمایش داده نمی‌شود. فعال‌کردن این قابلیت
+در محیطی غیر از `local`، `development` یا `test` باعث fail شدن startup می‌شود و مقدار پیش‌فرض آن
+خاموش است.
+
 ## 4. پاسخ موفق token endpoint
 
 دو قالب پاسخ مستقل وجود دارد:
