@@ -1,18 +1,23 @@
 package ir.jetvam.modules.product.service;
 
 import ir.jetvam.common.exception.ConflictException;
+import ir.jetvam.common.exception.FieldViolation;
 import ir.jetvam.common.exception.ResourceNotFoundException;
+import ir.jetvam.common.exception.ValidationException;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.modules.product.model.PlanCollateralEntity;
 import ir.jetvam.modules.product.model.PlanControlEntity;
 import ir.jetvam.modules.product.model.PlanEntity;
 import ir.jetvam.modules.product.model.PlanFeeEntity;
-import ir.jetvam.modules.product.model.PlanGuaranteeEntity;
-import ir.jetvam.modules.product.model.PlanInquiryEntity;
+import ir.jetvam.modules.product.model.PlanGuarantorPolicyEntity;
+import ir.jetvam.modules.product.model.PlanGuarantorCollateralEntity;
 import ir.jetvam.modules.product.model.ProductEntity;
 import ir.jetvam.modules.product.model.PublicationStatus;
 import ir.jetvam.modules.product.repository.PlanRepository;
 import ir.jetvam.modules.product.repository.ProductRepository;
+import ir.jetvam.modules.product.repository.CollateralTypeRepository;
+import ir.jetvam.modules.product.repository.FeeDefinitionRepository;
+import ir.jetvam.modules.product.repository.ControlDefinitionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +39,9 @@ public class DefaultProductCatalogService implements ProductCatalogService {
 
     private final ProductRepository productRepository;
     private final PlanRepository planRepository;
+    private final CollateralTypeRepository collateralTypeRepository;
+    private final FeeDefinitionRepository feeDefinitionRepository;
+    private final ControlDefinitionRepository controlDefinitionRepository;
 
     @Override
     @Transactional
@@ -128,34 +136,60 @@ public class DefaultProductCatalogService implements ProductCatalogService {
         Preconditions.requireNonNull(command, "command");
         PlanEntity plan = findPlan(planId);
         requireEditable(plan);
-        List<PlanInquiryEntity> inquiries = command.inquiries().stream()
-                .map(rule -> new PlanInquiryEntity(
-                        plan, rule.code(), rule.title(), rule.stageCode(), rule.sequence(), rule.required(),
-                        rule.enabled(), rule.configurationJson()
-                )).toList();
-        List<PlanGuaranteeEntity> guarantees = command.guarantees().stream()
-                .map(rule -> new PlanGuaranteeEntity(
-                        plan, rule.code(), rule.title(), rule.minimumCount(), rule.maximumCount(), rule.required(),
-                        rule.enabled(), rule.configurationJson()
+        try {
+            applyConfiguration(plan, command);
+        } catch (IllegalArgumentException exception) {
+            throw new ValidationException(
+                    "Plan configuration is invalid",
+                    List.of(new FieldViolation(
+                            "configuration",
+                            "PRODUCT.INVALID_PLAN_CONFIGURATION",
+                            exception.getMessage()
+                    ))
+            );
+        }
+        planRepository.flush();
+        return toPlan(plan, false);
+    }
+
+    private void applyConfiguration(PlanEntity plan, ProductCommands.ConfigurePlan command) {
+        List<PlanGuarantorPolicyEntity> guarantorPolicies = command.guarantorPolicy() == null ? List.of() : List.of(
+                new PlanGuarantorPolicyEntity(plan, command.guarantorPolicy().minimumCount(),
+                        command.guarantorPolicy().maximumCount(), command.guarantorPolicy().required(),
+                        command.guarantorPolicy().requiresCollateral(), command.guarantorPolicy().enabled())
+        );
+        List<PlanGuarantorCollateralEntity> guarantorCollaterals = command.guarantorCollaterals().stream()
+                .map(rule -> new PlanGuarantorCollateralEntity(
+                        plan, collateralTypeRepository.findById(rule.collateralTypeId())
+                                .orElseThrow(() -> new ResourceNotFoundException("collateralType", rule.collateralTypeId())),
+                        rule.minimumCoveragePercent(), rule.required(), rule.enabled()
                 )).toList();
         List<PlanCollateralEntity> collaterals = command.collaterals().stream()
                 .map(rule -> new PlanCollateralEntity(
-                        plan, rule.code(), rule.title(), rule.minimumCoveragePercent(), rule.required(), rule.enabled(),
-                        rule.configurationJson()
+                        plan, collateralTypeRepository.findById(rule.collateralTypeId())
+                                .orElseThrow(() -> new ResourceNotFoundException("collateralType", rule.collateralTypeId())),
+                        rule.minimumCoveragePercent(), rule.required(), rule.enabled()
                 )).toList();
         List<PlanFeeEntity> fees = command.fees().stream()
                 .map(rule -> new PlanFeeEntity(
-                        plan, rule.code(), rule.title(), rule.amount(), rule.currency(), rule.triggerCode(),
-                        rule.sourceInquiryCode(), rule.refundable(), rule.enabled()
+                        plan, feeDefinitionRepository.findById(rule.feeDefinitionId())
+                                .orElseThrow(() -> new ResourceNotFoundException("feeDefinition", rule.feeDefinitionId())),
+                        rule.enabled()
                 )).toList();
         List<PlanControlEntity> controls = command.controls().stream()
-                .map(rule -> new PlanControlEntity(
-                        plan, rule.code(), rule.title(), rule.priority(), rule.type(), rule.minimumValue(), rule.maximumValue(),
-                        rule.sourceInquiryCode(), rule.failureMessage(), rule.enabled()
-                )).toList();
-        plan.replaceConfiguration(inquiries, guarantees, collaterals, fees, controls);
-        planRepository.flush();
-        return toPlan(plan, false);
+                .map(rule -> {
+                    var definition = controlDefinitionRepository.findById(rule.controlDefinitionId())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "controlDefinition", rule.controlDefinitionId()));
+                    Preconditions.require(definition.isActive(), "Selected control definition is inactive");
+                    return new PlanControlEntity(
+                            plan, definition, rule.subjectType(), rule.priority(), rule.enabled(),
+                            rule.parameters().stream().map(value -> new PlanControlEntity.ParameterValue(
+                                    value.parameterDefinitionId(), value.numericValue()
+                            )).toList()
+                    );
+                }).toList();
+        plan.replaceConfiguration(guarantorPolicies, guarantorCollaterals, collaterals, fees, controls);
     }
 
     @Override
@@ -215,40 +249,62 @@ public class DefaultProductCatalogService implements ProductCatalogService {
                 plan.getId(), plan.getProduct().getId(), plan.getCode(), plan.getName(), plan.getDescription(),
                 plan.getMinimumAmount(), plan.getMaximumAmount(), plan.getMinimumTermMonths(),
                 plan.getMaximumTermMonths(), plan.getAnnualInterestRate(), plan.getStatus(), plan.getVersion(),
-                plan.getInquiries().stream()
+                plan.getGuarantorPolicies().stream()
                         .filter(item -> !publicView || item.isEnabled())
-                        .sorted(Comparator.comparingInt(PlanInquiryEntity::getSequence))
-                        .map(item -> new ProductViews.Inquiry(
-                                item.getCode(), item.getTitle(), item.getStageCode(), item.getSequence(),
-                                item.isRequired(), item.isEnabled(), item.getConfigurationJson()
-                        )).toList(),
-                plan.getGuarantees().stream()
+                        .findFirst()
+                        .map(item -> new ProductViews.GuarantorPolicy(
+                                item.getMinimumCount(), item.getMaximumCount(), item.isRequired(),
+                                item.isRequiresCollateral(), item.isEnabled()
+                        )).orElse(null),
+                plan.getGuarantorCollaterals().stream()
                         .filter(item -> !publicView || item.isEnabled())
-                        .sorted(Comparator.comparing(PlanGuaranteeEntity::getCode))
-                        .map(item -> new ProductViews.Guarantee(
-                                item.getCode(), item.getTitle(), item.getMinimumCount(), item.getMaximumCount(),
-                                item.isRequired(), item.isEnabled(), item.getConfigurationJson()
-                        )).toList(),
+                        .sorted(Comparator.comparing(item -> item.getCollateralType().getCode()))
+                        .map(item -> collateralView(item.getCollateralType(), item.getMinimumCoveragePercent(),
+                                item.isRequired(), item.isEnabled()))
+                        .toList(),
                 plan.getCollaterals().stream()
                         .filter(item -> !publicView || item.isEnabled())
-                        .sorted(Comparator.comparing(PlanCollateralEntity::getCode))
-                        .map(item -> new ProductViews.Collateral(
-                                item.getCode(), item.getTitle(), item.getMinimumCoveragePercent(), item.isRequired(),
-                                item.isEnabled(), item.getConfigurationJson()
-                        )).toList(),
+                        .sorted(Comparator.comparing(item -> item.getCollateralType().getCode()))
+                        .map(item -> collateralView(item.getCollateralType(), item.getMinimumCoveragePercent(),
+                                item.isRequired(), item.isEnabled()))
+                        .toList(),
                 plan.getFees().stream()
                         .filter(item -> !publicView || item.isEnabled())
-                        .sorted(Comparator.comparing(PlanFeeEntity::getCode))
+                        .sorted(Comparator.comparing(item -> item.getFeeDefinition().getCode()))
                         .map(item -> new ProductViews.Fee(
-                                item.getCode(), item.getTitle(), item.getAmount(), item.getCurrency(),
-                                item.getTriggerCode(), item.getSourceInquiryCode(), item.isRefundable(), item.isEnabled()
+                                item.getFeeDefinition().getId(), item.getFeeDefinition().getCode(),
+                                item.getFeeDefinition().getTitle(), item.getFeeDefinition().getAmount(),
+                                item.getFeeDefinition().getCurrency(), item.getFeeDefinition().getTriggerCode(),
+                                item.getFeeDefinition().getSourceInquiryCode() == null ? null
+                                        : item.getFeeDefinition().getSourceInquiryCode().code(),
+                                item.getFeeDefinition().isRefundable(),
+                                item.isEnabled()
                         )).toList(),
                 plan.getControls().stream()
                         .filter(item -> !publicView || item.isEnabled())
                         .sorted(Comparator.comparingInt(PlanControlEntity::getPriority))
                         .map(item -> new ProductViews.Control(
-                                item.getCode(), item.getTitle(), item.getPriority(), item.getType(), item.getMinimumValue(),
-                                item.getMaximumValue(), item.getSourceInquiryCode(), item.getFailureMessage(),
+                                item.getControlDefinition().getId(), item.getControlDefinition().getCode(),
+                                item.getControlDefinition().getTitle(), item.getPriority(),
+                                item.getControlDefinition().getEvaluatorType(), item.getSubjectType(),
+                                item.value(ir.jetvam.modules.product.model.ControlParameterRole.MINIMUM),
+                                item.value(ir.jetvam.modules.product.model.ControlParameterRole.MAXIMUM),
+                                item.getControlDefinition().getInquiryCode() == null ? null
+                                        : item.getControlDefinition().getInquiryCode().code(),
+                                item.getControlDefinition().getDefaultFailureMessage(),
+                                item.getControlDefinition().getParameters().stream()
+                                        .sorted(Comparator.comparingInt(
+                                                ir.jetvam.modules.product.model.ControlParameterDefinitionEntity::getDisplayOrder
+                                        ))
+                                        .map(definition -> new ProductViews.ControlParameter(
+                                                definition.getId(), definition.getCode(), definition.getTitle(),
+                                                definition.getValueRole(), definition.getDataType(), definition.isRequired(),
+                                                item.getParameterValues().stream()
+                                                        .filter(value -> value.getParameterDefinition().getId()
+                                                                .equals(definition.getId()))
+                                                        .map(ir.jetvam.modules.product.model.PlanControlParameterValueEntity::getNumericValue)
+                                                        .findFirst().orElse(null)
+                                        )).toList(),
                                 item.isEnabled()
                         )).toList()
         );
@@ -256,5 +312,24 @@ public class DefaultProductCatalogService implements ProductCatalogService {
 
     private static String normalize(String value) {
         return Preconditions.requireText(value, "code").strip().toUpperCase();
+    }
+
+    private static ProductViews.Collateral collateralView(
+            ir.jetvam.modules.product.model.CollateralTypeEntity collateralType,
+            java.math.BigDecimal coverage, boolean required, boolean enabled
+    ) {
+        return new ProductViews.Collateral(
+                collateralType.getId(), collateralType.getCode(), collateralType.getTitle(),
+                collateralType.getHandlerCode(), collateralType.isRequiresPhysicalDelivery(), coverage,
+                required, enabled, collateralType.getDocumentRequirements().stream()
+                        .sorted(Comparator.comparingInt(
+                                ir.jetvam.modules.product.model.CollateralDocumentRequirementEntity::getDisplayOrder))
+                        .map(item -> new ProductViews.DocumentRequirement(
+                                item.getDocumentType().getId(), item.getDocumentType().getCode(),
+                                item.getDocumentType().getTitle(), item.getDocumentType().getAllowedContentTypes(),
+                                item.getDocumentType().getMaximumSizeBytes(), item.isRequired(), item.getMinimumCount(),
+                                item.getMaximumCount(), item.getDisplayOrder()
+                        )).toList()
+        );
     }
 }

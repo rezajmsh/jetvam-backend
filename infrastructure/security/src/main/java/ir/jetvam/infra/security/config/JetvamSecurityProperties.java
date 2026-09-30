@@ -21,8 +21,12 @@ public class JetvamSecurityProperties {
 
     private boolean enabled = true;
     private List<String> publicPaths = new ArrayList<>(List.of(
+            "/error",
+            "/actuator",
+            "/actuator/",
             "/actuator/health/**",
             "/actuator/info",
+            "/actuator/prometheus",
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html"

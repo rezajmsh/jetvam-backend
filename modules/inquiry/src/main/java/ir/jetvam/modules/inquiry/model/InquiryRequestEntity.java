@@ -1,8 +1,11 @@
 package ir.jetvam.modules.inquiry.model;
 
 import ir.jetvam.common.validation.Preconditions;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.infra.persistence.entity.AbstractAuditableUuidEntity;
+import ir.jetvam.infra.persistence.entity.converter.InquiryTypeConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -27,7 +30,8 @@ import java.time.Instant;
 public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
 
     @Column(name = "inquiry_code", nullable = false, length = 100)
-    private String inquiryCode;
+    @Convert(converter = InquiryTypeConverter.class)
+    private InquiryType inquiryCode;
 
     @Column(name = "national_code", nullable = false, length = 10)
     private String nationalCode;
@@ -37,10 +41,6 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
 
     @Column(name = "request_json", nullable = false, columnDefinition = "text")
     private String requestJson;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "execution_mode", nullable = false, length = 20)
-    private InquiryExecutionMode executionMode;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 40)
@@ -108,7 +108,7 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     private String callbackError;
 
     public InquiryRequestEntity(
-            String inquiryCode,
+            InquiryType inquiryCode,
             String nationalCode,
             String subjectKey,
             String requestJson,
@@ -117,11 +117,10 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
             String callbackCorrelationId,
             Instant now
     ) {
-        this.inquiryCode = normalized(inquiryCode, "inquiryCode");
+        this.inquiryCode = Preconditions.requireNonNull(inquiryCode, "inquiryCode");
         this.nationalCode = normalized(nationalCode, "nationalCode");
         this.subjectKey = normalized(subjectKey, "subjectKey");
         this.requestJson = Preconditions.requireText(requestJson, "requestJson");
-        this.executionMode = InquiryExecutionMode.ASYNCHRONOUS;
         this.callbackTransport = normalized(callbackTransport, "callbackTransport");
         this.callbackDestination = normalized(callbackDestination, "callbackDestination");
         this.callbackCorrelationId = normalized(callbackCorrelationId, "callbackCorrelationId");
@@ -131,18 +130,17 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     }
 
     public static InquiryRequestEntity synchronous(
-            String inquiryCode,
+            InquiryType inquiryCode,
             String nationalCode,
             String subjectKey,
             String requestJson,
             Instant now
     ) {
         InquiryRequestEntity request = new InquiryRequestEntity();
-        request.inquiryCode = normalized(inquiryCode, "inquiryCode");
+        request.inquiryCode = Preconditions.requireNonNull(inquiryCode, "inquiryCode");
         request.nationalCode = normalized(nationalCode, "nationalCode");
         request.subjectKey = normalized(subjectKey, "subjectKey");
         request.requestJson = Preconditions.requireText(requestJson, "requestJson");
-        request.executionMode = InquiryExecutionMode.SYNCHRONOUS;
         request.status = InquiryStatus.PROCESSING;
         request.processingStartedAt = Preconditions.requireNonNull(now, "now");
         request.attemptCount = 1;
@@ -271,7 +269,7 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     private void terminal(InquiryStatus terminalStatus, Instant now) {
         status = terminalStatus;
         processingStartedAt = null;
-        if (executionMode == InquiryExecutionMode.ASYNCHRONOUS) {
+        if (callbackTransport != null) {
             callbackStatus = InquiryCallbackStatus.PENDING;
             callbackNextAttemptAt = Preconditions.requireNonNull(now, "now");
         } else {

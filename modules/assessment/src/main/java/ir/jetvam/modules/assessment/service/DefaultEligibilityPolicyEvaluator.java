@@ -44,7 +44,9 @@ public class DefaultEligibilityPolicyEvaluator implements EligibilityPolicyEvalu
         return switch (control.type()) {
             case AGE_RANGE -> age(control, facts.birthDate(), assessmentDate);
             case MINIMUM_CREDIT_RANK -> creditRank(control, facts.creditRank());
-            case NO_BAD_CHEQUE -> badCheque(control, facts.hasBadCheque());
+            case NO_BAD_CHEQUE -> noBadCheque(control, facts.badChequeCount());
+            case MAXIMUM_BAD_CHEQUE_COUNT -> maximumBadChequeCount(control, facts.badChequeCount());
+            case MAXIMUM_BAD_CHEQUE_AMOUNT -> maximumBadChequeAmount(control, facts.badChequeAmount());
         };
     }
 
@@ -70,12 +72,30 @@ public class DefaultEligibilityPolicyEvaluator implements EligibilityPolicyEvalu
         return outcome(control, passed, Integer.toString(rank));
     }
 
-    private static AssessmentModels.ControlResult badCheque(
+    private static AssessmentModels.ControlResult noBadCheque(
             AssessmentModels.PolicyControl control,
-            Boolean hasBadCheque
+            Integer badChequeCount
     ) {
-        boolean observed = Preconditions.requireNonNull(hasBadCheque, "hasBadCheque");
-        return outcome(control, !observed, Boolean.toString(observed));
+        int observed = Preconditions.requireNonNull(badChequeCount, "badChequeCount");
+        return outcome(control, observed == 0, Integer.toString(observed));
+    }
+
+    private static AssessmentModels.ControlResult maximumBadChequeCount(
+            AssessmentModels.PolicyControl control,
+            Integer badChequeCount
+    ) {
+        int observed = Preconditions.requireNonNull(badChequeCount, "badChequeCount");
+        boolean passed = BigDecimal.valueOf(observed).compareTo(control.maximumValue()) <= 0;
+        return outcome(control, passed, Integer.toString(observed));
+    }
+
+    private static AssessmentModels.ControlResult maximumBadChequeAmount(
+            AssessmentModels.PolicyControl control,
+            BigDecimal badChequeAmount
+    ) {
+        BigDecimal observed = Preconditions.requireNonNull(badChequeAmount, "badChequeAmount");
+        boolean passed = observed.compareTo(control.maximumValue()) <= 0;
+        return outcome(control, passed, observed.toPlainString());
     }
 
     private static AssessmentModels.ControlResult outcome(

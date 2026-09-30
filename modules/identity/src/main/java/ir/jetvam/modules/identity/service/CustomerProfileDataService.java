@@ -18,8 +18,4 @@ public interface CustomerProfileDataService {
             CustomerProfileModels.UpdatePersonalInformation command
     );
 
-    CustomerProfileModels.ProfileView updateEmploymentInformation(
-            UUID customerPartyId,
-            CustomerProfileModels.UpdateEmploymentInformation command
-    );
 }

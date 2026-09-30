@@ -8,6 +8,7 @@ package ir.jetvam.modules.origination.model;
  * @since 9/25/2026
  */
 public enum ApplicationControlStatus {
+    WAITING_SUBJECT,
     WAITING_PRIORITY,
     BLOCKED_BY_PAYMENT,
     PENDING_INQUIRY,

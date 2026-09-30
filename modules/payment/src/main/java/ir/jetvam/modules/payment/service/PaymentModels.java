@@ -34,6 +34,7 @@ public final class PaymentModels {
 
     public record FeeView(
             UUID id,
+            String referenceType,
             UUID referenceId,
             String code,
             String title,
@@ -42,7 +43,8 @@ public final class PaymentModels {
             String currency,
             String activationKey,
             FeeStatus status,
-            Instant paidAt
+            Instant paidAt,
+            Instant createdAt
     ) {
     }
 
@@ -50,7 +52,20 @@ public final class PaymentModels {
             UUID id,
             UUID feeId,
             PaymentAttemptStatus status,
-            String providerReference
+            String providerReference,
+            String gatewayCode,
+            String redirectUrl,
+            String returnUrl
+    ) {
+    }
+
+    public record GatewayView(
+            UUID id,
+            String code,
+            String title,
+            String adapterCode,
+            String configurationJson,
+            boolean active
     ) {
     }
 }

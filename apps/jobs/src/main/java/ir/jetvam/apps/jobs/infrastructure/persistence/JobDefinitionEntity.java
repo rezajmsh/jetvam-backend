@@ -8,6 +8,8 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
+
 /**
  * Persistent operational definition of a job and its schedule.
  *
@@ -40,6 +42,12 @@ public class JobDefinitionEntity extends AbstractAuditableUuidEntity {
 
     @Column(name = "enabled", nullable = false)
     private boolean enabled;
+
+    @Column(name = "lock_owner", length = 200)
+    private String lockOwner;
+
+    @Column(name = "lock_until")
+    private Instant lockUntil;
 
     public JobDefinitionEntity(
             String code,

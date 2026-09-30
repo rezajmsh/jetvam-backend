@@ -4,6 +4,7 @@ import ir.jetvam.infra.persistence.repository.JetvamJpaRepository;
 import ir.jetvam.modules.inquiry.model.InquiryCallbackStatus;
 import ir.jetvam.modules.inquiry.model.InquiryRequestEntity;
 import ir.jetvam.modules.inquiry.model.InquiryStatus;
+import ir.jetvam.common.inquiry.InquiryType;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
@@ -31,7 +32,7 @@ public interface InquiryRequestRepository extends JetvamJpaRepository<InquiryReq
     );
 
     Optional<InquiryRequestEntity> findFirstByInquiryCodeAndSubjectKeyAndStatusAndValidUntilAfterOrderByCompletedAtDesc(
-            String inquiryCode,
+            InquiryType inquiryCode,
             String subjectKey,
             InquiryStatus status,
             Instant now

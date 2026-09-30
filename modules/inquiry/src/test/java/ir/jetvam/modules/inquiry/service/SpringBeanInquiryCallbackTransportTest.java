@@ -1,5 +1,6 @@
 package ir.jetvam.modules.inquiry.service;
 
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import org.junit.jupiter.api.Test;
 
@@ -24,7 +25,7 @@ class SpringBeanInquiryCallbackTransportTest {
         InquiryCompletionHandler handler = handler("origination", received);
         SpringBeanInquiryCallbackTransport transport = new SpringBeanInquiryCallbackTransport(List.of(handler));
         AsyncInquiryModels.CompletionEvent event = new AsyncInquiryModels.CompletionEvent(
-                java.util.UUID.randomUUID(), "CREDIT_RATING_INQUIRY", InquiryStatus.COMPLETED,
+                java.util.UUID.randomUUID(), InquiryType.CREDIT_RATING, InquiryStatus.COMPLETED,
                 Map.of("rank", "5"), null, null, "local-id"
         );
 

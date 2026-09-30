@@ -50,7 +50,7 @@ public class PaymentController {
             @PathVariable UUID feeId,
             @Valid @RequestBody InitiatePaymentRequest request
     ) {
-        return paymentService.initiate(currentPartyId(), feeId, request.idempotencyKey());
+        return paymentService.initiate(currentPartyId(), feeId, request.idempotencyKey(), request.returnUrl());
     }
 
     @PostMapping("/attempts/{attemptId}/confirmation")
@@ -67,7 +67,7 @@ public class PaymentController {
         return CurrentUser.partyId().orElseThrow(() -> new IllegalStateException("Customer party is missing"));
     }
 
-    public record InitiatePaymentRequest(@NotBlank String idempotencyKey) {
+    public record InitiatePaymentRequest(@NotBlank String idempotencyKey, @NotBlank String returnUrl) {
     }
 
     public record ConfirmPaymentRequest(boolean successful, String providerReference) {

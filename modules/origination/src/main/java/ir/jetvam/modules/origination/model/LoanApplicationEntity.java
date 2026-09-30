@@ -64,21 +64,6 @@ public class LoanApplicationEntity extends AbstractAuditableUuidEntity {
     @Column(name = "status", nullable = false, length = 50)
     private ApplicationStatus status;
 
-    @Column(name = "personal_profile_revision")
-    private Long personalProfileRevision;
-
-    @Column(name = "employment_profile_revision")
-    private Long employmentProfileRevision;
-
-    @Column(name = "guarantee_information_json", columnDefinition = "text")
-    private String guaranteeInformationJson;
-
-    @Column(name = "requires_guarantee", nullable = false)
-    private boolean requiresGuarantee;
-
-    @Column(name = "requires_original_cheque", nullable = false)
-    private boolean requiresOriginalCheque;
-
     @Column(name = "requires_application_fee", nullable = false)
     private boolean requiresApplicationFee;
 
@@ -94,6 +79,12 @@ public class LoanApplicationEntity extends AbstractAuditableUuidEntity {
     @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
     private final Set<ApplicationControlEntity> controls = new LinkedHashSet<>();
 
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final Set<ApplicationGuarantorEntity> guarantors = new LinkedHashSet<>();
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final Set<ApplicationCollateralEntity> collaterals = new LinkedHashSet<>();
+
     public LoanApplicationEntity(
             UUID customerPartyId,
             String nationalCode,
@@ -104,11 +95,7 @@ public class LoanApplicationEntity extends AbstractAuditableUuidEntity {
             BigDecimal requestedAmount,
             int termMonths,
             BigDecimal annualInterestRate,
-            boolean requiresGuarantee,
-            boolean requiresOriginalCheque,
             boolean requiresApplicationFee,
-            Long personalProfileRevision,
-            Long employmentProfileRevision,
             ApplicationStatus initialStatus
     ) {
         this.customerPartyId = Preconditions.requireNonNull(customerPartyId, "customerPartyId");
@@ -120,16 +107,25 @@ public class LoanApplicationEntity extends AbstractAuditableUuidEntity {
         this.requestedAmount = Preconditions.requireNonNull(requestedAmount, "requestedAmount");
         this.termMonths = Preconditions.requirePositive(termMonths, "termMonths");
         this.annualInterestRate = Preconditions.requireNonNull(annualInterestRate, "annualInterestRate");
-        this.requiresGuarantee = requiresGuarantee;
-        this.requiresOriginalCheque = requiresOriginalCheque;
         this.requiresApplicationFee = requiresApplicationFee;
-        this.personalProfileRevision = positiveRevisionOrNull(personalProfileRevision, "personalProfileRevision");
-        this.employmentProfileRevision = positiveRevisionOrNull(employmentProfileRevision, "employmentProfileRevision");
         this.status = Preconditions.requireNonNull(initialStatus, "initialStatus");
     }
 
     public void addControl(ApplicationControlEntity control) {
         controls.add(Preconditions.requireNonNull(control, "control"));
+    }
+
+    public void addGuarantor(ApplicationGuarantorEntity guarantor) {
+        guarantors.add(Preconditions.requireNonNull(guarantor, "guarantor"));
+    }
+
+    public void addCollateral(ApplicationCollateralEntity collateral) {
+        collaterals.add(Preconditions.requireNonNull(collateral, "collateral"));
+    }
+
+    public void confirmControls() {
+        requireStatus(ApplicationStatus.WAITING_CONTROL_CONFIRMATION);
+        this.status = ApplicationStatus.WAITING_CONTROLS;
     }
 
     public void controlsPaid() {
@@ -146,7 +142,7 @@ public class LoanApplicationEntity extends AbstractAuditableUuidEntity {
 
     public void controlsPassed() {
         requireStatus(ApplicationStatus.WAITING_CONTROLS);
-        advanceFromProfileInformation(false);
+        this.status = ApplicationStatus.WAITING_EMPLOYMENT_INFORMATION;
     }
 
     public void cancelRemainingControls() {
@@ -163,66 +159,37 @@ public class LoanApplicationEntity extends AbstractAuditableUuidEntity {
         this.status = ApplicationStatus.MANUAL_REVIEW;
     }
 
-    public void usePersonalProfile(
-            long personalRevision,
-            Long availableEmploymentRevision,
-            boolean applicationFeesPaid
-    ) {
-        requireStatus(ApplicationStatus.WAITING_PERSONAL_INFORMATION);
-        this.personalProfileRevision = Preconditions.requirePositive(personalRevision, "personalRevision");
-        this.employmentProfileRevision = positiveRevisionOrNull(
-                availableEmploymentRevision,
-                "availableEmploymentRevision"
-        );
-        advanceFromProfileInformation(applicationFeesPaid);
-    }
-
-    public void useEmploymentProfile(long employmentRevision, boolean applicationFeesPaid) {
+    public void employmentInformationSaved(boolean applicationFeesPaid) {
         requireStatus(ApplicationStatus.WAITING_EMPLOYMENT_INFORMATION);
-        this.employmentProfileRevision = Preconditions.requirePositive(employmentRevision, "employmentRevision");
-        advanceFromProfileInformation(applicationFeesPaid);
-    }
-
-    public void adoptAvailableProfileInformation(
-            Long availablePersonalRevision,
-            Long availableEmploymentRevision,
-            boolean applicationFeesPaid
-    ) {
-        if (status == ApplicationStatus.WAITING_PERSONAL_INFORMATION && availablePersonalRevision != null) {
-            this.personalProfileRevision = positiveRevisionOrNull(
-                    availablePersonalRevision,
-                    "availablePersonalRevision"
-            );
-        }
-        if ((status == ApplicationStatus.WAITING_PERSONAL_INFORMATION
-                || status == ApplicationStatus.WAITING_EMPLOYMENT_INFORMATION)
-                && availableEmploymentRevision != null) {
-            this.employmentProfileRevision = positiveRevisionOrNull(
-                    availableEmploymentRevision,
-                    "availableEmploymentRevision"
-            );
-        }
-        if (status == ApplicationStatus.WAITING_PERSONAL_INFORMATION
-                || status == ApplicationStatus.WAITING_EMPLOYMENT_INFORMATION) {
-            advanceFromProfileInformation(applicationFeesPaid);
+        if (!guarantors.isEmpty() || !collaterals.isEmpty()) {
+            this.status = ApplicationStatus.WAITING_GUARANTEE;
+        } else {
+            afterGuarantee(applicationFeesPaid);
         }
     }
 
-    public void recordGuaranteeInformation(String json, boolean applicationFeesPaid) {
+    public void guaranteeInformationCompleted(boolean applicationFeesPaid) {
         requireStatus(ApplicationStatus.WAITING_GUARANTEE);
-        this.guaranteeInformationJson = Preconditions.requireText(json, "guaranteeInformationJson");
+        Preconditions.require(collaterals.stream().noneMatch(item -> item.isRequired()
+                        && item.getStatus() != ApplicationCollateralStatus.ACCEPTED
+                        && item.getStatus() != ApplicationCollateralStatus.WAITING_ORIGINAL_DELIVERY),
+                "Required collateral information is incomplete");
         afterGuarantee(applicationFeesPaid);
     }
 
     public void applicationFeesPaid() {
         requireStatus(ApplicationStatus.WAITING_APPLICATION_FEE);
-        this.status = requiresOriginalCheque
-                ? ApplicationStatus.WAITING_ORIGINAL_CHEQUE
+        this.status = requiresOriginalCollateralDelivery()
+                ? ApplicationStatus.WAITING_ORIGINAL_COLLATERAL
                 : ApplicationStatus.WAITING_SIGNATURE;
     }
 
-    public void originalChequeReceived() {
-        transition(ApplicationStatus.WAITING_ORIGINAL_CHEQUE, ApplicationStatus.WAITING_SIGNATURE);
+    public void originalCollateralsReceived() {
+        requireStatus(ApplicationStatus.WAITING_ORIGINAL_COLLATERAL);
+        Preconditions.require(collaterals.stream().noneMatch(item -> item.isRequired()
+                        && item.getStatus() == ApplicationCollateralStatus.WAITING_ORIGINAL_DELIVERY),
+                "Required original collateral is not fully received");
+        this.status = ApplicationStatus.WAITING_SIGNATURE;
     }
 
     public void signContract(Instant at) {
@@ -241,26 +208,15 @@ public class LoanApplicationEntity extends AbstractAuditableUuidEntity {
         if (requiresApplicationFee && !applicationFeesPaid) {
             this.status = ApplicationStatus.WAITING_APPLICATION_FEE;
         } else {
-            this.status = requiresOriginalCheque
-                    ? ApplicationStatus.WAITING_ORIGINAL_CHEQUE
+            this.status = requiresOriginalCollateralDelivery()
+                    ? ApplicationStatus.WAITING_ORIGINAL_COLLATERAL
                     : ApplicationStatus.WAITING_SIGNATURE;
         }
     }
 
-    private void advanceFromProfileInformation(boolean applicationFeesPaid) {
-        if (personalProfileRevision == null) {
-            this.status = ApplicationStatus.WAITING_PERSONAL_INFORMATION;
-        } else if (employmentProfileRevision == null) {
-            this.status = ApplicationStatus.WAITING_EMPLOYMENT_INFORMATION;
-        } else if (requiresGuarantee) {
-            this.status = ApplicationStatus.WAITING_GUARANTEE;
-        } else {
-            afterGuarantee(applicationFeesPaid);
-        }
-    }
-
-    private static Long positiveRevisionOrNull(Long revision, String field) {
-        return revision == null ? null : Preconditions.requirePositive(revision, field);
+    private boolean requiresOriginalCollateralDelivery() {
+        return collaterals.stream().anyMatch(item -> item.isRequired()
+                && item.getStatus() == ApplicationCollateralStatus.WAITING_ORIGINAL_DELIVERY);
     }
 
     private void transition(ApplicationStatus expected, ApplicationStatus target) {

@@ -5,6 +5,7 @@ import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.common.validation.IranianIdentifiers;
 import ir.jetvam.common.validation.Preconditions;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.model.InquiryRequestEntity;
 import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import ir.jetvam.modules.inquiry.repository.InquiryRequestRepository;
@@ -38,42 +39,44 @@ public class DefaultAsyncInquiryService implements AsyncInquiryService {
         String transport = Preconditions.requireText(callback.transport(), "callback.transport").strip();
         String destination = Preconditions.requireText(callback.destination(), "callback.destination").strip();
         String correlationId = Preconditions.requireText(callback.correlationId(), "callback.correlationId").strip();
-        definitionService.requireEnabledValidity(command.inquiryCode());
+        InquiryType inquiryCode = InquiryType.requireDeferred(command.inquiryCode());
+        definitionService.requireEnabledValidity(inquiryCode);
         return requestRepository.findByCallbackTransportAndCallbackDestinationAndCallbackCorrelationId(
                         transport, destination, correlationId
                 )
                 .map(InquiryRequestEntity::getId)
-                .orElseGet(() -> create(command, transport, destination, correlationId));
+                .orElseGet(() -> create(command, inquiryCode, transport, destination, correlationId));
     }
 
     private UUID create(
             AsyncInquiryModels.Submit command,
+            InquiryType inquiryCode,
             String transport,
             String destination,
             String correlationId
     ) {
         String nationalCode = IranianIdentifiers.normalizeNationalCode(command.nationalCode());
         Preconditions.require(IranianIdentifiers.isValidNationalCode(nationalCode), "nationalCode is invalid");
-        String requestJson = writeRequest(command.inquiryCode(), nationalCode);
+        String requestJson = writeRequest(inquiryCode, nationalCode);
         var reusable = requestRepository
                 .findFirstByInquiryCodeAndSubjectKeyAndStatusAndValidUntilAfterOrderByCompletedAtDesc(
-                        command.inquiryCode(), nationalCode, InquiryStatus.COMPLETED, timeProvider.now()
+                        inquiryCode, nationalCode, InquiryStatus.COMPLETED, timeProvider.now()
                 );
         InquiryRequestEntity request = reusable
                 .map(source -> InquiryRequestEntity.reusedAsynchronously(
                         requestJson, transport, destination, correlationId, source, timeProvider.now()
                 ))
                 .orElseGet(() -> new InquiryRequestEntity(
-                        command.inquiryCode(), nationalCode, nationalCode, requestJson,
+                        inquiryCode, nationalCode, nationalCode, requestJson,
                         transport, destination, correlationId, timeProvider.now()
                 ));
         requestRepository.save(request);
         return request.getId();
     }
 
-    private String writeRequest(String inquiryCode, String nationalCode) {
+    private String writeRequest(InquiryType inquiryCode, String nationalCode) {
         try {
-            return objectMapper.writeValueAsString(new PersistedAsyncRequest(inquiryCode, nationalCode));
+            return objectMapper.writeValueAsString(new PersistedAsyncRequest(inquiryCode.code(), nationalCode));
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to persist inquiry request", exception);
         }

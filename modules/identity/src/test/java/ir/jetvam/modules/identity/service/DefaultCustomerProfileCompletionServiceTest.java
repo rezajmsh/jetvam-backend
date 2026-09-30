@@ -3,12 +3,12 @@ package ir.jetvam.modules.identity.service;
 import ir.jetvam.common.security.UserCategory;
 import ir.jetvam.common.time.ClockTimeProvider;
 import ir.jetvam.modules.identity.model.AuthenticationMethod;
-import ir.jetvam.modules.identity.model.CustomerOnboardingStatus;
-import ir.jetvam.modules.identity.persistence.CustomerProfileEntity;
+import ir.jetvam.modules.identity.model.IdentityVerificationStatus;
+import ir.jetvam.modules.identity.model.MobileVerificationStatus;
+import ir.jetvam.modules.identity.model.ShahkarStatus;
 import ir.jetvam.modules.identity.persistence.IndividualPartyEntity;
 import ir.jetvam.modules.identity.persistence.PartyEntity;
 import ir.jetvam.modules.identity.persistence.UserAccountEntity;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
 import org.junit.jupiter.api.Test;
@@ -42,10 +42,8 @@ class DefaultCustomerProfileCompletionServiceTest {
         PartyEntity party = mock(PartyEntity.class);
         UserAccountEntity account = mock(UserAccountEntity.class);
         IndividualPartyEntity individual = mock(IndividualPartyEntity.class);
-        CustomerProfileEntity profile = mock(CustomerProfileEntity.class);
         UserAccountRepository userRepository = mock(UserAccountRepository.class);
         IndividualPartyRepository individualRepository = mock(IndividualPartyRepository.class);
-        CustomerProfileRepository profileRepository = mock(CustomerProfileRepository.class);
 
         when(account.getId()).thenReturn(userId);
         when(account.getParty()).thenReturn(party);
@@ -54,16 +52,17 @@ class DefaultCustomerProfileCompletionServiceTest {
         when(party.getId()).thenReturn(partyId);
         when(userRepository.findById(userId)).thenReturn(Optional.of(account));
         when(individualRepository.findById(partyId)).thenReturn(Optional.of(individual));
-        when(profileRepository.findByPartyId(partyId)).thenReturn(Optional.of(profile));
         when(individual.getFirstName()).thenReturn("Reza");
         when(individual.getLastName()).thenReturn("Jamshidi");
         when(individual.getBirthDate()).thenReturn(birthDate);
-        when(profile.getOnboardingStatus()).thenReturn(CustomerOnboardingStatus.COMPLETED);
+        when(individual.getMobileVerificationStatus()).thenReturn(MobileVerificationStatus.VERIFIED);
+        when(individual.getShahkarStatus()).thenReturn(ShahkarStatus.MATCHED);
+        when(individual.getIdentityVerificationStatus()).thenReturn(IdentityVerificationStatus.VERIFIED);
+        when(individual.hasCompleteIdentityInformation()).thenReturn(true);
 
         var service = new DefaultCustomerProfileCompletionService(
                 individualRepository,
                 userRepository,
-                profileRepository,
                 new ClockTimeProvider(Clock.fixed(Instant.parse("2026-09-25T12:00:00Z"), ZoneOffset.UTC))
         );
 
@@ -78,10 +77,12 @@ class DefaultCustomerProfileCompletionServiceTest {
                 "Reza",
                 "Jamshidi",
                 birthDate,
-                CustomerOnboardingStatus.COMPLETED
+                MobileVerificationStatus.VERIFIED,
+                ShahkarStatus.MATCHED,
+                IdentityVerificationStatus.VERIFIED,
+                true,
+                false
         ));
         verify(individual).completeIdentity("Reza", "Jamshidi", birthDate);
-        verify(party).changeDisplayName("Reza Jamshidi");
-        verify(profile).complete();
     }
 }

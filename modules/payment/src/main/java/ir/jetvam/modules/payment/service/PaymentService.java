@@ -23,9 +23,15 @@ public interface PaymentService {
 
     List<PaymentModels.FeeView> findFees(UUID customerPartyId, UUID referenceId);
 
-    PaymentModels.AttemptView initiate(UUID customerPartyId, UUID feeId, String idempotencyKey);
+    PaymentModels.AttemptView initiate(UUID customerPartyId, UUID feeId, String idempotencyKey, String returnUrl);
 
     PaymentModels.AttemptView confirm(UUID attemptId, boolean successful, String providerReference);
 
     boolean allPaid(UUID referenceId, FeeCategory category);
+
+    PaymentModels.AttemptView completeMock(UUID attemptId, String checkoutToken, boolean successful);
+
+    List<PaymentModels.GatewayView> findGateways();
+
+    PaymentModels.GatewayView updateGateway(String gatewayCode, String title, String configurationJson, boolean active);
 }

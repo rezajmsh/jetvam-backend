@@ -77,7 +77,7 @@ public class JobManagementController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('jobs:write')")
-    @Operation(summary = "Update a job", description = "Changes display data, handler or schedule and reconciles Quartz state.")
+    @Operation(summary = "Update a job", description = "Changes display data, handler or schedule and refreshes the runtime registration.")
     public JobDefinitionView update(@PathVariable UUID id, @Valid @RequestBody UpdateJobRequest request) {
         return service.update(id, new UpdateJobDefinitionCommand(
                 request.displayName(), request.description(), request.handlerKey(),

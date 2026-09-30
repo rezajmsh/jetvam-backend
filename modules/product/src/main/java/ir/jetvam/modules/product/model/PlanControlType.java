@@ -10,5 +10,7 @@ package ir.jetvam.modules.product.model;
 public enum PlanControlType {
     AGE_RANGE,
     MINIMUM_CREDIT_RANK,
-    NO_BAD_CHEQUE
+    NO_BAD_CHEQUE,
+    MAXIMUM_BAD_CHEQUE_COUNT,
+    MAXIMUM_BAD_CHEQUE_AMOUNT
 }

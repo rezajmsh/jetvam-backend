@@ -1,7 +1,7 @@
 package ir.jetvam.modules.inquiry.provider;
 
 import ir.jetvam.common.validation.Preconditions;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.service.InquiryRequests;
 import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.integration.http.DynamicProviderHttpClientFactory;
@@ -26,7 +26,7 @@ public class GenericJsonBankAccountStatusAdapter extends AbstractJsonInquiryAdap
         super(clientFactory);
     }
 
-    @Override public String capabilityCode() { return InquiryCapabilities.BANK_ACCOUNT_STATUS; }
+    @Override public String capabilityCode() { return InquiryType.BANK_ACCOUNT_STATUS.code(); }
 
     @Override public String adapterCode() { return ADAPTER_CODE; }
 

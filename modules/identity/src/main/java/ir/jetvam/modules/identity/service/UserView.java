@@ -25,4 +25,9 @@ public record UserView(
         Set<UserCategory> categories,
         Set<String> roles
 ) {
+
+    public UserView {
+        categories = Set.copyOf(categories);
+        roles = Set.copyOf(roles);
+    }
 }

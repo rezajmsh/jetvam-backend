@@ -13,7 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Protects the joined Party hierarchy and its discriminator contract.
- * Customer profiles remain roles attached to a Party rather than Party subtypes.
+ * Customer identity and personal fields remain canonical properties of the individual Party.
  *
  * @author reza jamshidi
  * @since 9/22/2026
@@ -34,6 +34,5 @@ class PartyInheritanceMappingTest {
                 .isEqualTo(PartyType.INDIVIDUAL.name());
         assertThat(OrganizationPartyEntity.class.getAnnotation(DiscriminatorValue.class).value())
                 .isEqualTo(PartyType.ORGANIZATION.name());
-        assertThat(PartyEntity.class.isAssignableFrom(CustomerProfileEntity.class)).isFalse();
     }
 }

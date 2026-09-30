@@ -1,5 +1,7 @@
 package ir.jetvam.modules.inquiry.service;
 
+import ir.jetvam.common.inquiry.InquiryType;
+
 import java.util.Map;
 
 /**
@@ -15,7 +17,7 @@ public final class DeferredInquiryModels {
     }
 
     public record Command(
-            String inquiryCode,
+            InquiryType inquiryCode,
             String nationalCode,
             String providerCode,
             String externalTrackingCode

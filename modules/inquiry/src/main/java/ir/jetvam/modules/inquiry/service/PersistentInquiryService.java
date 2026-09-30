@@ -4,7 +4,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.validation.IranianIdentifiers;
 import ir.jetvam.common.validation.Preconditions;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.integration.routing.ProviderExecution;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,7 +34,7 @@ public class PersistentInquiryService implements InquiryService {
         Preconditions.require(IranianIdentifiers.isValidMobileNumber(mobile), "mobile is invalid");
         InquiryRequests.MobileOwnership normalized = new InquiryRequests.MobileOwnership(mobile, nationalCode);
         return execute(
-                InquiryCapabilities.MOBILE_OWNERSHIP,
+                InquiryType.MOBILE_OWNERSHIP,
                 nationalCode,
                 nationalCode + ":" + mobile,
                 normalized,
@@ -49,7 +49,7 @@ public class PersistentInquiryService implements InquiryService {
         String nationalCode = normalizedNationalCode(request == null ? null : request.nationalCode());
         InquiryRequests.CivilRegistration normalized = new InquiryRequests.CivilRegistration(nationalCode);
         return executeNationalCode(
-                InquiryCapabilities.CIVIL_REGISTRATION, nationalCode, normalized,
+                InquiryType.CIVIL_REGISTRATION, nationalCode, normalized,
                 InquiryResults.CivilRegistration.class,
                 () -> providerService.findCivilRegistration(normalized),
                 InquiryResults.CivilRegistration::trackingId
@@ -61,7 +61,7 @@ public class PersistentInquiryService implements InquiryService {
         String nationalCode = normalizedNationalCode(request == null ? null : request.nationalCode());
         InquiryRequests.MilitaryStatus normalized = new InquiryRequests.MilitaryStatus(nationalCode);
         return executeNationalCode(
-                InquiryCapabilities.MILITARY_STATUS, nationalCode, normalized,
+                InquiryType.MILITARY_STATUS, nationalCode, normalized,
                 InquiryResults.MilitaryStatus.class,
                 () -> providerService.findMilitaryStatus(normalized),
                 InquiryResults.MilitaryStatus::trackingId
@@ -73,7 +73,7 @@ public class PersistentInquiryService implements InquiryService {
         String nationalCode = normalizedNationalCode(request == null ? null : request.nationalCode());
         InquiryRequests.BankAccountStatus normalized = new InquiryRequests.BankAccountStatus(nationalCode);
         return executeNationalCode(
-                InquiryCapabilities.BANK_ACCOUNT_STATUS, nationalCode, normalized,
+                InquiryType.BANK_ACCOUNT_STATUS, nationalCode, normalized,
                 InquiryResults.BankAccountStatus.class,
                 () -> providerService.findBankAccountStatus(normalized),
                 InquiryResults.BankAccountStatus::trackingId
@@ -85,7 +85,7 @@ public class PersistentInquiryService implements InquiryService {
         String nationalCode = normalizedNationalCode(request == null ? null : request.nationalCode());
         InquiryRequests.BankingFacilities normalized = new InquiryRequests.BankingFacilities(nationalCode);
         return executeNationalCode(
-                InquiryCapabilities.BANKING_FACILITIES, nationalCode, normalized,
+                InquiryType.BANKING_FACILITIES, nationalCode, normalized,
                 InquiryResults.BankingFacilities.class,
                 () -> providerService.findBankingFacilities(normalized),
                 InquiryResults.BankingFacilities::trackingId
@@ -97,7 +97,7 @@ public class PersistentInquiryService implements InquiryService {
         String nationalCode = normalizedNationalCode(request == null ? null : request.nationalCode());
         InquiryRequests.BadCheque normalized = new InquiryRequests.BadCheque(nationalCode);
         return executeNationalCode(
-                InquiryCapabilities.BAD_CHEQUE, nationalCode, normalized,
+                InquiryType.BAD_CHEQUE, nationalCode, normalized,
                 InquiryResults.BadCheque.class,
                 () -> providerService.findBadCheques(normalized),
                 InquiryResults.BadCheque::trackingId
@@ -109,7 +109,7 @@ public class PersistentInquiryService implements InquiryService {
         String nationalCode = normalizedNationalCode(request == null ? null : request.nationalCode());
         InquiryRequests.CreditRating normalized = new InquiryRequests.CreditRating(nationalCode);
         return executeNationalCode(
-                InquiryCapabilities.CREDIT_RATING, nationalCode, normalized,
+                InquiryType.CREDIT_RATING, nationalCode, normalized,
                 InquiryResults.CreditRating.class,
                 () -> providerService.findCreditRating(normalized),
                 InquiryResults.CreditRating::trackingId
@@ -117,7 +117,7 @@ public class PersistentInquiryService implements InquiryService {
     }
 
     private <C, R> R executeNationalCode(
-            String inquiryCode,
+            InquiryType inquiryCode,
             String nationalCode,
             C command,
             Class<R> resultType,
@@ -130,7 +130,7 @@ public class PersistentInquiryService implements InquiryService {
     }
 
     private <C, R> R execute(
-            String inquiryCode,
+            InquiryType inquiryCode,
             String nationalCode,
             String subjectKey,
             C command,

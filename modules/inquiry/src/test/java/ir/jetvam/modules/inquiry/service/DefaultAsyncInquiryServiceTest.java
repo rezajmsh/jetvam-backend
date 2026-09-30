@@ -2,7 +2,7 @@ package ir.jetvam.modules.inquiry.service;
 
 import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.time.ClockTimeProvider;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.model.InquiryRequestEntity;
 import ir.jetvam.modules.inquiry.repository.InquiryRequestRepository;
 import org.junit.jupiter.api.Test;
@@ -38,7 +38,7 @@ class DefaultAsyncInquiryServiceTest {
         InquiryDefinitionService definitions = mock(InquiryDefinitionService.class);
         var timeProvider = new ClockTimeProvider(Clock.fixed(NOW, ZoneOffset.UTC));
         InquiryRequestEntity source = InquiryRequestEntity.synchronous(
-                InquiryCapabilities.BAD_CHEQUE,
+                InquiryType.BAD_CHEQUE,
                 "0067749828",
                 "0067749828",
                 "{\"nationalCode\":\"0067749828\"}",
@@ -53,7 +53,7 @@ class DefaultAsyncInquiryServiceTest {
                 NOW.minusSeconds(50),
                 NOW.plus(Duration.ofDays(1))
         );
-        when(definitions.requireEnabledValidity(InquiryCapabilities.BAD_CHEQUE))
+        when(definitions.requireEnabledValidity(InquiryType.BAD_CHEQUE))
                 .thenReturn(Duration.ofDays(1));
         when(repository.findByCallbackTransportAndCallbackDestinationAndCallbackCorrelationId(
                 "SPRING_BEAN", "origination", "control-1"
@@ -71,7 +71,7 @@ class DefaultAsyncInquiryServiceTest {
         );
 
         UUID requestId = service.submit(new AsyncInquiryModels.Submit(
-                InquiryCapabilities.BAD_CHEQUE,
+                InquiryType.BAD_CHEQUE,
                 "0067749828",
                 new AsyncInquiryModels.Callback("SPRING_BEAN", "origination", "control-1")
         ));

@@ -21,6 +21,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -73,6 +77,13 @@ public class LoanApplicationController {
         return applicationService.refresh(currentPartyId(), applicationId);
     }
 
+    @PostMapping("/{applicationId}/controls/confirmation")
+    @PreAuthorize("hasRole('CUSTOMER') and hasAuthority('origination:self:write')")
+    @Operation(summary = "Confirm eligibility controls", description = "Records customer consent and starts local or asynchronous inquiry-backed controls in priority order.")
+    public OriginationModels.ApplicationView confirmControls(@PathVariable UUID applicationId) {
+        return applicationService.confirmControls(currentPartyId(), applicationId);
+    }
+
     @PutMapping("/{applicationId}/personal-information")
     @PreAuthorize("hasRole('CUSTOMER') and hasAuthority('origination:self:write')")
     @Operation(summary = "Save personal and banking information", description = "Updates the reusable customer profile and attaches its revision to this application.")
@@ -97,7 +108,7 @@ public class LoanApplicationController {
     ) {
         return applicationService.saveEmploymentInformation(
                 currentPartyId(), applicationId,
-                new CustomerProfileModels.UpdateEmploymentInformation(
+                new OriginationModels.EmploymentInformation(
                         request.educationCode(), request.employmentCode(), request.monthlyIncome(), request.documentIds()
                 )
         );
@@ -116,6 +127,26 @@ public class LoanApplicationController {
                         request.chequeSayadId(), request.bankCode(), request.chequeNumber(), request.chequeSerial(),
                         request.chequeDate(), request.chequeAmount(), request.guarantorNationalCode(),
                         request.guarantorMobile()
+                )
+        );
+    }
+
+    @PostMapping(
+            path = "/{applicationId}/collaterals/{collateralId}/documents",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @PreAuthorize("hasRole('CUSTOMER') and hasAuthority('origination:self:write')")
+    @Operation(summary = "Upload collateral document", description = "Validates and stores a file against one snapshotted collateral document requirement.")
+    public OriginationModels.ApplicationView uploadCollateralDocument(
+            @PathVariable UUID applicationId,
+            @PathVariable UUID collateralId,
+            @RequestParam UUID requirementId,
+            @RequestPart("file") MultipartFile file
+    ) throws java.io.IOException {
+        return applicationService.uploadCollateralDocument(
+                currentPartyId(), applicationId, collateralId, requirementId,
+                new OriginationModels.UploadDocument(
+                        file.getOriginalFilename(), file.getContentType(), file.getBytes()
                 )
         );
     }

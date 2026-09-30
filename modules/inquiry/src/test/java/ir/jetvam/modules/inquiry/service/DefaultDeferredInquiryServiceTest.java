@@ -1,6 +1,6 @@
 package ir.jetvam.modules.inquiry.service;
 
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.provider.CreditRatingProtocol;
 import ir.jetvam.modules.integration.routing.ProviderExecution;
 import ir.jetvam.modules.integration.routing.ProviderRouter;
@@ -23,7 +23,7 @@ class DefaultDeferredInquiryServiceTest {
                 DeferredInquiryStatus.PENDING, "tracking-1", 120, null, null, null, null, null
         );
         when(router.executeWithProvider(
-                InquiryCapabilities.CREDIT_RATING_SUBMIT,
+                InquiryType.CREDIT_RATING_SUBMIT.code(),
                 new CreditRatingProtocol.Submit("0067749828"),
                 CreditRatingProtocol.Progress.class,
                 true
@@ -33,7 +33,7 @@ class DefaultDeferredInquiryServiceTest {
                 BigDecimal.valueOf(720), null, null
         );
         when(router.executeOnProvider(
-                InquiryCapabilities.CREDIT_RATING_POLL,
+                InquiryType.CREDIT_RATING_POLL.code(),
                 "BUREAU_A",
                 new CreditRatingProtocol.Poll("tracking-1"),
                 CreditRatingProtocol.Progress.class
@@ -41,10 +41,10 @@ class DefaultDeferredInquiryServiceTest {
         DefaultDeferredInquiryService service = new DefaultDeferredInquiryService(providerService, router);
 
         DeferredInquiryModels.Result submitted = service.execute(new DeferredInquiryModels.Command(
-                InquiryCapabilities.CREDIT_RATING, "0067749828", null, null
+                InquiryType.CREDIT_RATING, "0067749828", null, null
         ));
         DeferredInquiryModels.Result polled = service.execute(new DeferredInquiryModels.Command(
-                InquiryCapabilities.CREDIT_RATING, "0067749828", submitted.providerCode(),
+                InquiryType.CREDIT_RATING, "0067749828", submitted.providerCode(),
                 submitted.externalTrackingCode()
         ));
 
@@ -52,7 +52,7 @@ class DefaultDeferredInquiryServiceTest {
         assertThat(polled.status()).isEqualTo(DeferredInquiryStatus.COMPLETED);
         assertThat(polled.facts()).containsEntry("rank", "8");
         verify(router).executeOnProvider(
-                InquiryCapabilities.CREDIT_RATING_POLL,
+                InquiryType.CREDIT_RATING_POLL.code(),
                 "BUREAU_A",
                 new CreditRatingProtocol.Poll("tracking-1"),
                 CreditRatingProtocol.Progress.class

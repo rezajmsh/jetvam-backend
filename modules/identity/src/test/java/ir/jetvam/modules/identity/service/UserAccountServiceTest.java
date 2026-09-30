@@ -1,7 +1,6 @@
 package ir.jetvam.modules.identity.service;
 
 import ir.jetvam.common.security.UserCategory;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.PartyRepository;
 import ir.jetvam.modules.identity.repository.RoleRepository;
@@ -86,7 +85,6 @@ class UserAccountServiceTest {
                 mock(IndividualPartyRepository.class),
                 mock(UserAccountRepository.class),
                 mock(RoleRepository.class),
-                mock(CustomerProfileRepository.class),
                 PasswordEncoderFactories.createDelegatingPasswordEncoder(),
                 new DefaultPasswordPolicy(),
                 mock(TimeProvider.class)

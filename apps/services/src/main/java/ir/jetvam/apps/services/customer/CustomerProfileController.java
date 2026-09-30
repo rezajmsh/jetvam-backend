@@ -9,7 +9,6 @@ import ir.jetvam.modules.identity.service.CustomerProfileDataService;
 import ir.jetvam.modules.identity.service.CustomerProfileModels;
 import ir.jetvam.modules.identity.service.CustomerProfileView;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -22,9 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -46,7 +43,7 @@ public class CustomerProfileController {
 
     @GetMapping
     @PreAuthorize("hasRole('CUSTOMER') and hasAuthority('profile:read:self')")
-    @Operation(summary = "Get my profile", description = "Returns reusable personal and employment data and their current revisions.")
+    @Operation(summary = "Get my profile", description = "Returns the current onboarding status and any available reusable profile data.")
     public CustomerProfileModels.ProfileView get() {
         return profileService.get(currentPartyId());
     }
@@ -73,20 +70,6 @@ public class CustomerProfileController {
         );
     }
 
-    @PutMapping("/employment-information")
-    @PreAuthorize("hasRole('CUSTOMER') and hasAuthority('profile:write:self')")
-    @Operation(summary = "Update my employment information", description = "Updates reusable education, employment, income and document references independently of an application.")
-    public CustomerProfileModels.ProfileView updateEmployment(
-            @Valid @RequestBody EmploymentInformationRequest request
-    ) {
-        return profileService.updateEmploymentInformation(
-                currentPartyId(),
-                new CustomerProfileModels.UpdateEmploymentInformation(
-                        request.educationCode(), request.employmentCode(), request.monthlyIncome(), request.documentIds()
-                )
-        );
-    }
-
     private static UUID currentPartyId() {
         return CurrentUser.partyId().orElseThrow(() -> new IllegalStateException("Customer party is missing"));
     }
@@ -106,11 +89,4 @@ public class CustomerProfileController {
     ) {
     }
 
-    public record EmploymentInformationRequest(
-            @NotBlank @Size(max = 80) String educationCode,
-            @NotBlank @Size(max = 80) String employmentCode,
-            @NotNull @DecimalMin("0") BigDecimal monthlyIncome,
-            @Size(max = 20) List<@NotNull UUID> documentIds
-    ) {
-    }
 }

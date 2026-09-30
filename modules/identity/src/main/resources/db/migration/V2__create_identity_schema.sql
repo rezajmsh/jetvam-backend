@@ -17,13 +17,33 @@ CREATE TABLE iam_individual_party (
     last_name varchar(100),
     birth_date date,
     mobile varchar(11) UNIQUE,
+    mobile_verification_status varchar(30) NOT NULL DEFAULT 'UNVERIFIED',
     mobile_verified_at timestamptz,
     shahkar_status varchar(30) NOT NULL,
     shahkar_verified_at timestamptz,
     shahkar_tracking_id varchar(100),
     identity_verified_at timestamptz,
+    identity_verification_status varchar(30) NOT NULL DEFAULT 'PENDING',
+    bank_card_number varchar(16),
+    landline varchar(20),
+    postal_code varchar(10),
+    address varchar(1000),
+    CONSTRAINT ck_iam_individual_mobile_verification CHECK (
+        mobile_verification_status IN ('UNVERIFIED', 'VERIFIED')
+    ),
+    CONSTRAINT ck_iam_individual_identity_verification CHECK (
+        identity_verification_status IN ('PENDING', 'VERIFIED', 'REJECTED')
+    ),
     CONSTRAINT ck_iam_individual_shahkar_status CHECK (
         shahkar_status IN ('NOT_REQUESTED', 'PENDING', 'MATCHED', 'NOT_MATCHED', 'FAILED')
+    ),
+    CONSTRAINT ck_iam_individual_personal_information CHECK (
+        (bank_card_number IS NULL AND landline IS NULL AND postal_code IS NULL AND address IS NULL)
+        OR
+        (bank_card_number IS NOT NULL AND length(bank_card_number) = 16
+            AND landline IS NOT NULL
+            AND postal_code IS NOT NULL AND length(postal_code) = 10
+            AND address IS NOT NULL)
     )
 );
 
@@ -85,53 +105,6 @@ CREATE TABLE iam_user_role (
     user_id uuid NOT NULL REFERENCES iam_user_account(id) ON DELETE CASCADE,
     role_id uuid NOT NULL REFERENCES iam_role(id),
     PRIMARY KEY (user_id, role_id)
-);
-
-CREATE TABLE iam_customer_profile (
-    id uuid PRIMARY KEY REFERENCES iam_party(id),
-    version bigint NOT NULL DEFAULT 0,
-    onboarding_status varchar(40) NOT NULL,
-    bank_card_number varchar(16),
-    landline varchar(20),
-    postal_code varchar(10),
-    address varchar(1000),
-    personal_information_revision bigint NOT NULL DEFAULT 0,
-    education_code varchar(80),
-    employment_code varchar(80),
-    monthly_income numeric(19, 2),
-    employment_information_revision bigint NOT NULL DEFAULT 0,
-    created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT ck_iam_customer_onboarding CHECK (
-        onboarding_status IN (
-            'MOBILE_PENDING', 'MOBILE_VERIFIED', 'IDENTITY_PENDING',
-            'IDENTITY_VERIFIED', 'COMPLETED', 'REJECTED'
-        )
-    ),
-    CONSTRAINT ck_iam_customer_personal_revision CHECK (personal_information_revision >= 0),
-    CONSTRAINT ck_iam_customer_employment_revision CHECK (employment_information_revision >= 0),
-    CONSTRAINT ck_iam_customer_monthly_income CHECK (monthly_income IS NULL OR monthly_income >= 0),
-    CONSTRAINT ck_iam_customer_personal_complete CHECK (
-        (personal_information_revision = 0
-            AND bank_card_number IS NULL AND landline IS NULL AND postal_code IS NULL AND address IS NULL)
-        OR
-        (personal_information_revision > 0
-            AND bank_card_number IS NOT NULL AND landline IS NOT NULL
-            AND postal_code IS NOT NULL AND address IS NOT NULL)
-    ),
-    CONSTRAINT ck_iam_customer_employment_complete CHECK (
-        (employment_information_revision = 0
-            AND education_code IS NULL AND employment_code IS NULL AND monthly_income IS NULL)
-        OR
-        (employment_information_revision > 0
-            AND education_code IS NOT NULL AND employment_code IS NOT NULL AND monthly_income IS NOT NULL)
-    )
-);
-
-CREATE TABLE iam_customer_employment_document (
-    customer_profile_id uuid NOT NULL REFERENCES iam_customer_profile(id) ON DELETE CASCADE,
-    document_id uuid NOT NULL,
-    PRIMARY KEY (customer_profile_id, document_id)
 );
 
 CREATE INDEX ix_iam_user_party ON iam_user_account(party_id);
@@ -225,6 +198,7 @@ INSERT INTO iam_role_permission (role_id, permission) VALUES
     ('00000000-0000-0000-0000-000000000103', 'product:configuration:read'),
     ('00000000-0000-0000-0000-000000000103', 'inquiry:execute'),
     ('00000000-0000-0000-0000-000000000103', 'inquiry:configuration:read'),
+    ('00000000-0000-0000-0000-000000000103', 'payment:configuration:read'),
     ('00000000-0000-0000-0000-000000000103', 'assessment:execute'),
     ('00000000-0000-0000-0000-000000000103', 'origination:manage'),
     ('00000000-0000-0000-0000-000000000104', 'identity:user:read'),
@@ -268,6 +242,8 @@ INSERT INTO iam_role_permission (role_id, permission) VALUES
     ('00000000-0000-0000-0000-000000000106', 'inquiry:execute'),
     ('00000000-0000-0000-0000-000000000106', 'inquiry:configuration:read'),
     ('00000000-0000-0000-0000-000000000106', 'inquiry:configuration:write'),
+    ('00000000-0000-0000-0000-000000000106', 'payment:configuration:read'),
+    ('00000000-0000-0000-0000-000000000106', 'payment:configuration:write'),
     ('00000000-0000-0000-0000-000000000106', 'assessment:execute'),
     ('00000000-0000-0000-0000-000000000106', 'origination:manage'),
     ('00000000-0000-0000-0000-000000000107', 'merchant:read:self'),

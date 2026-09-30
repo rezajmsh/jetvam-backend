@@ -22,6 +22,8 @@ public interface LoanApplicationRepository extends JetvamJpaRepository<LoanAppli
 
     List<LoanApplicationEntity> findAllByCustomerPartyIdOrderByCreatedAtDesc(UUID customerPartyId);
 
+    List<LoanApplicationEntity> findAllByOrderByCreatedAtDesc();
+
     Optional<LoanApplicationEntity> findByIdAndCustomerPartyId(UUID id, UUID customerPartyId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

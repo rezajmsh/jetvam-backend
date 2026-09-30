@@ -1,5 +1,8 @@
 package ir.jetvam.modules.identity.persistence;
 
+import ir.jetvam.common.validation.Preconditions;
+import ir.jetvam.modules.identity.model.IdentityVerificationStatus;
+import ir.jetvam.modules.identity.model.MobileVerificationStatus;
 import ir.jetvam.modules.identity.model.PartyType;
 import ir.jetvam.modules.identity.model.ShahkarStatus;
 import jakarta.persistence.Column;
@@ -51,6 +54,10 @@ public class IndividualPartyEntity extends PartyEntity {
     private Instant mobileVerifiedAt;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "mobile_verification_status", nullable = false, length = 30)
+    private MobileVerificationStatus mobileVerificationStatus;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "shahkar_status", nullable = false, length = 30)
     private ShahkarStatus shahkarStatus;
 
@@ -62,6 +69,23 @@ public class IndividualPartyEntity extends PartyEntity {
 
     @Column(name = "identity_verified_at")
     private Instant identityVerifiedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "identity_verification_status", nullable = false, length = 30)
+    private IdentityVerificationStatus identityVerificationStatus;
+
+    @Column(name = "bank_card_number", length = 16)
+    private String bankCardNumber;
+
+    @Column(name = "landline", length = 20)
+    private String landline;
+
+    @Column(name = "postal_code", length = 10)
+    private String postalCode;
+
+    @Column(name = "address", length = 1000)
+    private String address;
+
 
     public IndividualPartyEntity(
             String displayName,
@@ -77,7 +101,9 @@ public class IndividualPartyEntity extends PartyEntity {
         this.lastName = lastName;
         this.birthDate = birthDate;
         this.mobile = mobile;
+        this.mobileVerificationStatus = MobileVerificationStatus.UNVERIFIED;
         this.shahkarStatus = ShahkarStatus.NOT_REQUESTED;
+        this.identityVerificationStatus = IdentityVerificationStatus.PENDING;
     }
 
     @Override
@@ -88,6 +114,7 @@ public class IndividualPartyEntity extends PartyEntity {
 
     public void markMobileVerified(Instant verifiedAt) {
         this.mobileVerifiedAt = verifiedAt;
+        this.mobileVerificationStatus = MobileVerificationStatus.VERIFIED;
     }
 
     public void markShahkarPending() {
@@ -103,6 +130,7 @@ public class IndividualPartyEntity extends PartyEntity {
     public void markShahkarNotMatched(String trackingId) {
         this.shahkarStatus = ShahkarStatus.NOT_MATCHED;
         this.shahkarTrackingId = trackingId;
+        this.identityVerificationStatus = IdentityVerificationStatus.REJECTED;
     }
 
     public void markShahkarFailed() {
@@ -111,11 +139,70 @@ public class IndividualPartyEntity extends PartyEntity {
 
     public void markIdentityVerified(Instant verifiedAt) {
         this.identityVerifiedAt = verifiedAt;
+        this.identityVerificationStatus = IdentityVerificationStatus.VERIFIED;
     }
 
     public void completeIdentity(String firstName, String lastName, LocalDate birthDate) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.birthDate = birthDate;
+        changeDisplayName(firstName + " " + lastName);
     }
+
+    public void updateIdentity(
+            String nationalCode,
+            String firstName,
+            String lastName,
+            LocalDate birthDate,
+            String mobile
+    ) {
+        this.nationalCode = nationalCode;
+        this.mobile = mobile;
+        completeIdentity(firstName, lastName, birthDate);
+    }
+
+    public void updatePersonalInformation(
+            String bankCardNumber,
+            String landline,
+            String postalCode,
+            String address
+    ) {
+        this.bankCardNumber = digits(bankCardNumber, 16, "bankCardNumber");
+        this.landline = maximumLength(landline, 20, "landline");
+        this.postalCode = digits(postalCode, 10, "postalCode");
+        this.address = maximumLength(address, 1000, "address");
+    }
+
+    public boolean hasCompleteIdentityInformation() {
+        return firstName != null && !firstName.isBlank()
+                && lastName != null && !lastName.isBlank()
+                && birthDate != null;
+    }
+
+    public boolean hasCompletePersonalInformation() {
+        return bankCardNumber != null && landline != null && postalCode != null && address != null;
+    }
+
+    public boolean isReadyForApplication() {
+        return mobileVerificationStatus == MobileVerificationStatus.VERIFIED
+                && shahkarStatus == ShahkarStatus.MATCHED
+                && identityVerificationStatus == IdentityVerificationStatus.VERIFIED
+                && hasCompleteIdentityInformation()
+                && hasCompletePersonalInformation();
+    }
+
+    private static String maximumLength(String value, int maximum, String field) {
+        String normalized = Preconditions.requireText(value, field).strip();
+        Preconditions.require(normalized.length() <= maximum, field + " is too long");
+        return normalized;
+    }
+
+    private static String digits(String value, int length, String field) {
+        String normalized = Preconditions.requireText(value, field).strip();
+        Preconditions.require(normalized.length() == length
+                        && normalized.chars().allMatch(character -> character >= '0' && character <= '9'),
+                field + " must contain exactly " + length + " digits");
+        return normalized;
+    }
+
 }

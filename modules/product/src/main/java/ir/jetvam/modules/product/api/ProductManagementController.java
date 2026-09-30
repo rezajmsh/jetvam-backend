@@ -3,7 +3,7 @@ package ir.jetvam.modules.product.api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import ir.jetvam.modules.product.model.PublicationStatus;
-import ir.jetvam.modules.product.model.PlanControlType;
+import ir.jetvam.modules.product.model.ControlSubjectType;
 import ir.jetvam.modules.product.service.ProductCatalogService;
 import ir.jetvam.modules.product.service.ProductCommands;
 import ir.jetvam.modules.product.service.ProductViews;
@@ -129,7 +129,7 @@ public class ProductManagementController {
 
     @PutMapping("/plans/{planId}/configuration")
     @PreAuthorize(WRITE_ACCESS)
-    @Operation(summary = "Configure a plan", description = "Atomically replaces inquiry, guarantor, collateral and fee rules of a non-active plan.")
+    @Operation(summary = "Configure a plan", description = "Atomically replaces control, guarantor, collateral and fee rules of a non-active plan.")
     public ProductViews.Plan configurePlan(
             @PathVariable UUID planId,
             @Valid @RequestBody PlanConfigurationRequest request
@@ -189,16 +189,16 @@ public class ProductManagementController {
     }
 
     public record PlanConfigurationRequest(
-            @Valid List<InquiryRequest> inquiries,
-            @Valid List<GuaranteeRequest> guarantees,
+            @Valid GuarantorPolicyRequest guarantorPolicy,
+            @Valid List<CollateralRequest> guarantorCollaterals,
             @Valid List<CollateralRequest> collaterals,
             @Valid List<FeeRequest> fees,
             @Valid List<ControlRequest> controls
     ) {
         ProductCommands.ConfigurePlan toCommand() {
             return new ProductCommands.ConfigurePlan(
-                    inquiries == null ? List.of() : inquiries.stream().map(InquiryRequest::toCommand).toList(),
-                    guarantees == null ? List.of() : guarantees.stream().map(GuaranteeRequest::toCommand).toList(),
+                    guarantorPolicy == null ? null : guarantorPolicy.toCommand(),
+                    guarantorCollaterals == null ? List.of() : guarantorCollaterals.stream().map(CollateralRequest::toCommand).toList(),
                     collaterals == null ? List.of() : collaterals.stream().map(CollateralRequest::toCommand).toList(),
                     fees == null ? List.of() : fees.stream().map(FeeRequest::toCommand).toList(),
                     controls == null ? List.of() : controls.stream().map(ControlRequest::toCommand).toList()
@@ -206,85 +206,67 @@ public class ProductManagementController {
         }
     }
 
-    public record InquiryRequest(
-            @NotBlank @Size(max = 100) String code,
-            @NotBlank @Size(max = 200) String title,
-            @NotBlank @Size(max = 100) String stageCode,
-            @Positive int sequence,
-            boolean required,
-            boolean enabled,
-            String configurationJson
-    ) {
-        ProductCommands.InquiryRule toCommand() {
-            return new ProductCommands.InquiryRule(
-                    code, title, stageCode, sequence, required, enabled, configurationJson
-            );
-        }
-    }
-
-    public record GuaranteeRequest(
-            @NotBlank @Size(max = 100) String code,
-            @NotBlank @Size(max = 200) String title,
+    public record GuarantorPolicyRequest(
             @PositiveOrZero int minimumCount,
             @PositiveOrZero int maximumCount,
             boolean required,
-            boolean enabled,
-            String configurationJson
+            boolean requiresCollateral,
+            boolean enabled
     ) {
-        ProductCommands.GuaranteeRule toCommand() {
-            return new ProductCommands.GuaranteeRule(
-                    code, title, minimumCount, maximumCount, required, enabled, configurationJson
+        ProductCommands.GuarantorPolicy toCommand() {
+            return new ProductCommands.GuarantorPolicy(
+                    minimumCount, maximumCount, required, requiresCollateral, enabled
             );
         }
     }
 
     public record CollateralRequest(
-            @NotBlank @Size(max = 100) String code,
-            @NotBlank @Size(max = 200) String title,
+            @NotNull UUID collateralTypeId,
             @NotNull @DecimalMin("0") BigDecimal minimumCoveragePercent,
             boolean required,
-            boolean enabled,
-            String configurationJson
+            boolean enabled
     ) {
         ProductCommands.CollateralRule toCommand() {
             return new ProductCommands.CollateralRule(
-                    code, title, minimumCoveragePercent, required, enabled, configurationJson
+                    collateralTypeId, minimumCoveragePercent, required, enabled
             );
         }
     }
 
     public record FeeRequest(
-            @NotBlank @Size(max = 100) String code,
-            @NotBlank @Size(max = 200) String title,
-            @NotNull @DecimalMin("0") BigDecimal amount,
-            @NotBlank @Size(min = 3, max = 3) String currency,
-            @NotBlank @Size(max = 100) String triggerCode,
-            @Size(max = 100) String sourceInquiryCode,
-            boolean refundable,
+            @NotNull UUID feeDefinitionId,
             boolean enabled
     ) {
         ProductCommands.FeeRule toCommand() {
             return new ProductCommands.FeeRule(
-                    code, title, amount, currency, triggerCode, sourceInquiryCode, refundable, enabled
+                    feeDefinitionId, enabled
             );
         }
     }
 
     public record ControlRequest(
-            @NotBlank @Size(max = 100) String code,
-            @NotBlank @Size(max = 200) String title,
+            @NotNull UUID controlDefinitionId,
+            @NotNull ControlSubjectType subjectType,
             @Positive int priority,
-            @NotNull PlanControlType type,
-            @DecimalMin("0") BigDecimal minimumValue,
-            @DecimalMin("0") BigDecimal maximumValue,
-            @Size(max = 100) String sourceInquiryCode,
-            @NotBlank @Size(max = 500) String failureMessage,
+            @Valid List<ControlParameterValueRequest> parameters,
             boolean enabled
     ) {
         ProductCommands.ControlRule toCommand() {
             return new ProductCommands.ControlRule(
-                    code, title, priority, type, minimumValue, maximumValue, sourceInquiryCode, failureMessage, enabled
+                    controlDefinitionId, subjectType, priority,
+                    parameters == null ? List.of() : parameters.stream()
+                            .map(ControlParameterValueRequest::toCommand).toList(),
+                    enabled
             );
+        }
+    }
+
+    public record ControlParameterValueRequest(
+            @NotNull UUID parameterDefinitionId,
+            @NotNull @DecimalMin("0") BigDecimal numericValue
+    ) {
+        ProductCommands.ControlParameterValue toCommand() {
+            return new ProductCommands.ControlParameterValue(parameterDefinitionId, numericValue);
         }
     }
 }

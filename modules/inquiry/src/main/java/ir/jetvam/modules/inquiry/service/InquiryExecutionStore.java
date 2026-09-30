@@ -1,6 +1,7 @@
 package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.common.exception.ResourceNotFoundException;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.modules.inquiry.model.InquiryRequestEntity;
 import ir.jetvam.modules.inquiry.model.InquiryStatus;
@@ -31,7 +32,7 @@ public class InquiryExecutionStore {
 
     @Transactional
     public Preparation prepare(
-            String inquiryCode,
+            InquiryType inquiryCode,
             String nationalCode,
             String subjectKey,
             String requestJson

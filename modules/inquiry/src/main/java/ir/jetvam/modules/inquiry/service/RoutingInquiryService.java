@@ -1,7 +1,7 @@
 package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.common.exception.IntegrationException;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.integration.routing.ProviderExecution;
 import ir.jetvam.modules.integration.routing.ProviderRouter;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ public class RoutingInquiryService {
             InquiryRequests.MobileOwnership request
     ) {
         return execute(
-                InquiryCapabilities.MOBILE_OWNERSHIP,
+                InquiryType.MOBILE_OWNERSHIP.code(),
                 request,
                 InquiryResults.MobileOwnership.class,
                 "mobile-ownership"
@@ -33,7 +33,7 @@ public class RoutingInquiryService {
 
     public ProviderExecution<InquiryResults.BadCheque> findBadCheques(InquiryRequests.BadCheque request) {
         return execute(
-                InquiryCapabilities.BAD_CHEQUE,
+                InquiryType.BAD_CHEQUE.code(),
                 request,
                 InquiryResults.BadCheque.class,
                 "bad-cheque"
@@ -44,7 +44,7 @@ public class RoutingInquiryService {
             InquiryRequests.CivilRegistration request
     ) {
         return execute(
-                InquiryCapabilities.CIVIL_REGISTRATION,
+                InquiryType.CIVIL_REGISTRATION.code(),
                 request,
                 InquiryResults.CivilRegistration.class,
                 "civil-registration"
@@ -55,7 +55,7 @@ public class RoutingInquiryService {
             InquiryRequests.MilitaryStatus request
     ) {
         return execute(
-                InquiryCapabilities.MILITARY_STATUS,
+                InquiryType.MILITARY_STATUS.code(),
                 request,
                 InquiryResults.MilitaryStatus.class,
                 "military-status"
@@ -66,7 +66,7 @@ public class RoutingInquiryService {
             InquiryRequests.BankAccountStatus request
     ) {
         return execute(
-                InquiryCapabilities.BANK_ACCOUNT_STATUS,
+                InquiryType.BANK_ACCOUNT_STATUS.code(),
                 request,
                 InquiryResults.BankAccountStatus.class,
                 "bank-account-status"
@@ -77,7 +77,7 @@ public class RoutingInquiryService {
             InquiryRequests.BankingFacilities request
     ) {
         return execute(
-                InquiryCapabilities.BANKING_FACILITIES,
+                InquiryType.BANKING_FACILITIES.code(),
                 request,
                 InquiryResults.BankingFacilities.class,
                 "banking-facilities"
@@ -86,7 +86,7 @@ public class RoutingInquiryService {
 
     public ProviderExecution<InquiryResults.CreditRating> findCreditRating(InquiryRequests.CreditRating request) {
         return execute(
-                InquiryCapabilities.CREDIT_RATING,
+                InquiryType.CREDIT_RATING.code(),
                 request,
                 InquiryResults.CreditRating.class,
                 "credit-rating"

@@ -22,4 +22,8 @@ public interface IndividualPartyRepository extends JetvamJpaRepository<Individua
     boolean existsByNationalCode(String nationalCode);
 
     boolean existsByMobile(String mobile);
+
+    boolean existsByNationalCodeAndIdNot(String nationalCode, UUID id);
+
+    boolean existsByMobileAndIdNot(String mobile, UUID id);
 }

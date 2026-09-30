@@ -1,5 +1,6 @@
 package ir.jetvam.modules.product.model;
 
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.infra.persistence.entity.AbstractAuditableUuidEntity;
 import jakarta.persistence.CascadeType;
@@ -21,10 +22,9 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.function.BiConsumer;
 
 /**
  * Represents the commercial offer selected by a customer within a product.
@@ -75,10 +75,10 @@ public class PlanEntity extends AbstractAuditableUuidEntity {
     private PublicationStatus status;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private final Set<PlanInquiryEntity> inquiries = new LinkedHashSet<>();
+    private final Set<PlanGuarantorPolicyEntity> guarantorPolicies = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private final Set<PlanGuaranteeEntity> guarantees = new LinkedHashSet<>();
+    private final Set<PlanGuarantorCollateralEntity> guarantorCollaterals = new LinkedHashSet<>();
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private final Set<PlanCollateralEntity> collaterals = new LinkedHashSet<>();
@@ -130,62 +130,66 @@ public class PlanEntity extends AbstractAuditableUuidEntity {
     }
 
     public void replaceConfiguration(
-            Collection<PlanInquiryEntity> inquiries,
-            Collection<PlanGuaranteeEntity> guarantees,
+            Collection<PlanGuarantorPolicyEntity> guarantorPolicies,
+            Collection<PlanGuarantorCollateralEntity> guarantorCollaterals,
             Collection<PlanCollateralEntity> collaterals,
             Collection<PlanFeeEntity> fees,
             Collection<PlanControlEntity> controls
     ) {
-        Collection<PlanInquiryEntity> safeInquiries = copy(inquiries, "inquiries");
-        Collection<PlanGuaranteeEntity> safeGuarantees = copy(guarantees, "guarantees");
+        Collection<PlanGuarantorPolicyEntity> safeGuarantorPolicies = copy(guarantorPolicies, "guarantorPolicies");
+        Collection<PlanGuarantorCollateralEntity> safeGuarantorCollaterals = copy(guarantorCollaterals, "guarantorCollaterals");
         Collection<PlanCollateralEntity> safeCollaterals = copy(collaterals, "collaterals");
         Collection<PlanFeeEntity> safeFees = copy(fees, "fees");
         Collection<PlanControlEntity> safeControls = copy(controls, "controls");
 
-        requireUnique(safeInquiries, PlanInquiryEntity::getCode, "inquiry code");
-        requireUnique(safeInquiries, PlanInquiryEntity::getSequence, "inquiry sequence");
-        requireUnique(safeGuarantees, PlanGuaranteeEntity::getCode, "guarantee code");
-        requireUnique(safeCollaterals, PlanCollateralEntity::getCode, "collateral code");
-        requireUnique(safeFees, PlanFeeEntity::getCode, "fee code");
-        requireUnique(safeControls, PlanControlEntity::getCode, "control code");
-        requireUnique(safeControls, PlanControlEntity::getPriority, "control priority");
-
-        Set<String> inquiryCodes = safeInquiries.stream().map(PlanInquiryEntity::getCode).collect(HashSet::new,
-                Set::add, Set::addAll);
-        Map<String, Boolean> enabledInquiries = safeInquiries.stream()
-                .collect(Collectors.toMap(PlanInquiryEntity::getCode, PlanInquiryEntity::isEnabled));
+        Preconditions.require(safeGuarantorPolicies.size() <= 1, "A plan can have at most one guarantor policy");
+        requireUnique(safeGuarantorCollaterals, item -> item.getCollateralType().getId(), "guarantor collateral type");
+        requireUnique(safeCollaterals, item -> item.getCollateralType().getId(), "collateral type");
+        requireUnique(safeFees, item -> item.getFeeDefinition().getId(), "fee definition");
+        requireUnique(safeControls,
+                item -> item.getSubjectType() + ":" + item.getControlDefinition().getId(),
+                "control definition for subject");
+        requireUnique(safeControls, item -> item.getSubjectType() + ":" + item.getPriority(),
+                "control priority for subject");
+        Set<InquiryType> inquiryCodes = safeControls.stream()
+                .filter(PlanControlEntity::isEnabled)
+                .map(item -> item.getControlDefinition().getInquiryCode())
+                .filter(java.util.Objects::nonNull)
+                .collect(HashSet::new, Set::add, Set::addAll);
         safeFees.stream()
-                .map(PlanFeeEntity::getSourceInquiryCode)
+                .map(item -> item.getFeeDefinition().getSourceInquiryCode())
                 .filter(code -> code != null)
                 .forEach(code -> Preconditions.require(inquiryCodes.contains(code),
-                        "Fee sourceInquiryCode must reference an inquiry in the same plan: " + code));
-        safeControls.stream()
-                .map(PlanControlEntity::getSourceInquiryCode)
-                .filter(code -> code != null)
-                .forEach(code -> Preconditions.require(inquiryCodes.contains(code),
-                        "Control sourceInquiryCode must reference an inquiry in the same plan: " + code));
-        safeControls.stream()
-                .filter(PlanControlEntity::isEnabled)
-                .map(PlanControlEntity::getSourceInquiryCode)
-                .filter(code -> code != null)
-                .forEach(code -> Preconditions.require(Boolean.TRUE.equals(enabledInquiries.get(code)),
-                        "Enabled control must reference an enabled inquiry: " + code));
-        Set<String> controlledInquiryCodes = safeControls.stream()
-                .filter(PlanControlEntity::isEnabled)
-                .map(PlanControlEntity::getSourceInquiryCode)
-                .filter(code -> code != null)
-                .collect(Collectors.toSet());
-        safeInquiries.stream()
-                .filter(PlanInquiryEntity::isEnabled)
-                .map(PlanInquiryEntity::getCode)
-                .forEach(code -> Preconditions.require(controlledInquiryCodes.contains(code),
-                        "Enabled inquiry must be referenced by an enabled control: " + code));
-
-        replace(this.inquiries, safeInquiries);
-        replace(this.guarantees, safeGuarantees);
-        replace(this.collaterals, safeCollaterals);
-        replace(this.fees, safeFees);
-        replace(this.controls, safeControls);
+                        "Fee sourceInquiryCode must belong to an enabled control in the same plan: " + code));
+        boolean guarantorCollateralRequired = safeGuarantorPolicies.stream()
+                .anyMatch(policy -> policy.isEnabled() && policy.isRequiresCollateral());
+        Preconditions.require(!guarantorCollateralRequired || safeGuarantorCollaterals.stream()
+                        .anyMatch(PlanGuarantorCollateralEntity::isEnabled),
+                "A guarantor policy requiring collateral must select at least one guarantor collateral type");
+        synchronize(this.guarantorPolicies, safeGuarantorPolicies, ignored -> "POLICY",
+                (target, source) -> target.reconfigure(
+                        source.getMinimumCount(), source.getMaximumCount(), source.isRequired(),
+                        source.isRequiresCollateral(), source.isEnabled()
+                ));
+        synchronize(this.guarantorCollaterals, safeGuarantorCollaterals,
+                item -> item.getCollateralType().getId(),
+                (target, source) -> target.reconfigure(
+                        source.getMinimumCoveragePercent(), source.isRequired(), source.isEnabled()
+                ));
+        synchronize(this.collaterals, safeCollaterals, item -> item.getCollateralType().getId(),
+                (target, source) -> target.reconfigure(
+                        source.getMinimumCoveragePercent(), source.isRequired(), source.isEnabled()
+                ));
+        synchronize(this.fees, safeFees, item -> item.getFeeDefinition().getId(),
+                (target, source) -> target.reconfigure(source.isEnabled()));
+        synchronize(this.controls, safeControls,
+                item -> item.getSubjectType() + ":" + item.getControlDefinition().getId(),
+                (target, source) -> target.reconfigure(
+                        source.getPriority(), source.isEnabled(), source.getParameterValues().stream()
+                                .map(value -> new PlanControlEntity.ParameterValue(
+                                        value.getParameterDefinition().getId(), value.getNumericValue()
+                                )).toList()
+                ));
     }
 
     public void changeStatus(PublicationStatus status) {
@@ -201,9 +205,24 @@ public class PlanEntity extends AbstractAuditableUuidEntity {
         values.forEach(value -> Preconditions.require(unique.add(key.apply(value)), "Duplicate " + label));
     }
 
-    private static <T> void replace(Set<T> target, Collection<T> source) {
-        target.clear();
-        target.addAll(source);
+    private static <T, K> void synchronize(
+            Set<T> target,
+            Collection<T> source,
+            Function<T, K> key,
+            BiConsumer<T, T> merge
+    ) {
+        java.util.Map<K, T> existing = target.stream()
+                .collect(java.util.stream.Collectors.toMap(key, Function.identity()));
+        Set<K> requestedKeys = source.stream().map(key).collect(java.util.stream.Collectors.toSet());
+        target.removeIf(item -> !requestedKeys.contains(key.apply(item)));
+        source.forEach(incoming -> {
+            T current = existing.get(key.apply(incoming));
+            if (current == null) {
+                target.add(incoming);
+            } else {
+                merge.accept(current, incoming);
+            }
+        });
     }
 
     private static BigDecimal requireNonNegative(BigDecimal value, String name) {

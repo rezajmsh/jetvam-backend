@@ -9,6 +9,7 @@ import ir.jetvam.apps.uaa.grant.password.PasswordGrantAuthenticationConverter;
 import ir.jetvam.apps.uaa.grant.password.PasswordGrantAuthenticationProvider;
 import ir.jetvam.apps.uaa.grant.password.TokenEndpointAuthenticationFailureHandler;
 import ir.jetvam.infra.security.JetvamJwtAuthenticationConverter;
+import ir.jetvam.infra.security.config.JetvamSecurityProperties;
 import ir.jetvam.infra.security.web.JetvamAccessDeniedHandler;
 import ir.jetvam.infra.security.web.JetvamAuthenticationEntryPoint;
 import org.springframework.beans.factory.ObjectProvider;
@@ -39,6 +40,7 @@ public class AuthorizationServerConfiguration {
     @Bean
     SecurityFilterChain uaaSecurityFilterChain(
             HttpSecurity http,
+            JetvamSecurityProperties securityProperties,
             JwtDecoder jwtDecoder,
             JetvamJwtAuthenticationConverter authenticationConverter,
             JetvamAuthenticationEntryPoint authenticationEntryPoint,
@@ -50,20 +52,14 @@ public class AuthorizationServerConfiguration {
             ObjectMapper objectMapper,
             ObjectProvider<Tracer> tracerProvider
     ) throws Exception {
+        String[] publicPaths = securityProperties.getPublicPaths().toArray(String[]::new);
         var authenticationFailureHandler = new TokenEndpointAuthenticationFailureHandler(
                 objectMapper,
                 tracerProvider.getIfAvailable()
         );
         http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(
-                                "/actuator/health/**",
-                                "/actuator/info",
-                                "/v3/api-docs/**",
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/error"
-                        ).permitAll()
+                        .requestMatchers(publicPaths).permitAll()
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/customer/registrations/otp",
                                 "/api/v1/customer/registrations/verify",

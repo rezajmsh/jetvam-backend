@@ -181,6 +181,14 @@ public class UserAccountEntity extends AbstractAuditableUuidEntity {
         this.lockedUntil = null;
     }
 
+    public void changeAuthenticationMobile(String mobile, Instant changedAt) {
+        Preconditions.require(primaryAuthenticationMethod == AuthenticationMethod.PASSWORD,
+                "only password accounts contain an authentication mobile");
+        this.authenticationMobile = Preconditions.requireText(mobile, "mobile");
+        this.authenticationChangedAt = Preconditions.requireNonNull(changedAt, "changedAt");
+        this.authenticationVersion++;
+    }
+
     public void unlock(Instant changedAt) {
         this.status = UserAccountStatus.ACTIVE;
         this.authenticationChangedAt = Preconditions.requireNonNull(changedAt, "changedAt");

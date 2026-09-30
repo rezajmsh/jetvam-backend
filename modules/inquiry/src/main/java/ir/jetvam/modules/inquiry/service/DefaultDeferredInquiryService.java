@@ -2,7 +2,7 @@ package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.common.validation.IranianIdentifiers;
 import ir.jetvam.common.validation.Preconditions;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.provider.CreditRatingProtocol;
 import ir.jetvam.modules.integration.routing.ProviderExecution;
 import ir.jetvam.modules.integration.routing.ProviderRouter;
@@ -31,14 +31,14 @@ public class DefaultDeferredInquiryService implements DeferredInquiryService {
         Preconditions.requireNonNull(command, "command");
         String nationalCode = IranianIdentifiers.normalizeNationalCode(command.nationalCode());
         Preconditions.require(IranianIdentifiers.isValidNationalCode(nationalCode), "nationalCode is invalid");
-        return switch (command.inquiryCode()) {
-            case InquiryCapabilities.CREDIT_RATING -> creditRating(command, nationalCode);
-            case InquiryCapabilities.BAD_CHEQUE -> badCheque(nationalCode);
-            case InquiryCapabilities.CIVIL_REGISTRATION -> civilRegistration(nationalCode);
-            case InquiryCapabilities.MILITARY_STATUS -> militaryStatus(nationalCode);
-            case InquiryCapabilities.BANK_ACCOUNT_STATUS -> bankAccountStatus(nationalCode);
-            case InquiryCapabilities.BANKING_FACILITIES -> bankingFacilities(nationalCode);
-            default -> throw new IllegalArgumentException("Unsupported deferred inquiry: " + command.inquiryCode());
+        return switch (InquiryType.requireDeferred(command.inquiryCode())) {
+            case CREDIT_RATING -> creditRating(command, nationalCode);
+            case BAD_CHEQUE -> badCheque(nationalCode);
+            case CIVIL_REGISTRATION -> civilRegistration(nationalCode);
+            case MILITARY_STATUS -> militaryStatus(nationalCode);
+            case BANK_ACCOUNT_STATUS -> bankAccountStatus(nationalCode);
+            case BANKING_FACILITIES -> bankingFacilities(nationalCode);
+            default -> throw new IllegalStateException("Unsupported deferred inquiry: " + command.inquiryCode());
         };
     }
 
@@ -51,14 +51,14 @@ public class DefaultDeferredInquiryService implements DeferredInquiryService {
         if (command.polling()) {
             providerCode = Preconditions.requireText(command.providerCode(), "providerCode");
             progress = providerRouter.executeOnProvider(
-                    InquiryCapabilities.CREDIT_RATING_POLL,
+                    InquiryType.CREDIT_RATING_POLL.code(),
                     providerCode,
                     new CreditRatingProtocol.Poll(command.externalTrackingCode()),
                     CreditRatingProtocol.Progress.class
             );
         } else {
             ProviderExecution<CreditRatingProtocol.Progress> execution = providerRouter.executeWithProvider(
-                    InquiryCapabilities.CREDIT_RATING_SUBMIT,
+                    InquiryType.CREDIT_RATING_SUBMIT.code(),
                     new CreditRatingProtocol.Submit(nationalCode),
                     CreditRatingProtocol.Progress.class,
                     true

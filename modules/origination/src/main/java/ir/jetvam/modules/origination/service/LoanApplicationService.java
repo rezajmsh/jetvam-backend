@@ -1,7 +1,5 @@
 package ir.jetvam.modules.origination.service;
 
-import ir.jetvam.modules.identity.service.CustomerProfileModels;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -17,20 +15,24 @@ public interface LoanApplicationService {
 
     List<OriginationModels.ApplicationView> findMine(UUID customerPartyId);
 
+    List<OriginationModels.ApplicationView> findAllForOperations();
+
     OriginationModels.ApplicationView getMine(UUID customerPartyId, UUID applicationId);
 
     OriginationModels.ApplicationView refresh(UUID customerPartyId, UUID applicationId);
 
+    OriginationModels.ApplicationView confirmControls(UUID customerPartyId, UUID applicationId);
+
     OriginationModels.ApplicationView savePersonalInformation(
             UUID customerPartyId,
             UUID applicationId,
-            CustomerProfileModels.UpdatePersonalInformation command
+            ir.jetvam.modules.identity.service.CustomerProfileModels.UpdatePersonalInformation command
     );
 
     OriginationModels.ApplicationView saveEmploymentInformation(
             UUID customerPartyId,
             UUID applicationId,
-            CustomerProfileModels.UpdateEmploymentInformation command
+            OriginationModels.EmploymentInformation command
     );
 
     OriginationModels.ApplicationView saveGuaranteeInformation(
@@ -39,9 +41,17 @@ public interface LoanApplicationService {
             OriginationModels.GuaranteeInformation command
     );
 
+    OriginationModels.ApplicationView uploadCollateralDocument(
+            UUID customerPartyId,
+            UUID applicationId,
+            UUID collateralId,
+            UUID requirementId,
+            OriginationModels.UploadDocument command
+    );
+
     OriginationModels.ApplicationView signContract(UUID customerPartyId, UUID applicationId);
 
-    OriginationModels.ApplicationView markOriginalChequeReceived(UUID applicationId);
+    OriginationModels.ApplicationView markOriginalCollateralsReceived(UUID applicationId);
 
     OriginationModels.ApplicationView allocateCredit(UUID applicationId);
 }

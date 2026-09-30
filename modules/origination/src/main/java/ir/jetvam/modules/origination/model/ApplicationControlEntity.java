@@ -1,9 +1,13 @@
 package ir.jetvam.modules.origination.model;
 
 import ir.jetvam.common.validation.Preconditions;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.infra.persistence.entity.AbstractUuidEntity;
+import ir.jetvam.infra.persistence.entity.converter.InquiryTypeConverter;
 import ir.jetvam.modules.product.model.PlanControlType;
+import ir.jetvam.modules.product.model.ControlSubjectType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -36,6 +40,13 @@ public class ApplicationControlEntity extends AbstractUuidEntity {
     @JoinColumn(name = "application_id", nullable = false)
     private LoanApplicationEntity application;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "subject_type", nullable = false, length = 20)
+    private ControlSubjectType subjectType;
+
+    @Column(name = "subject_party_id")
+    private UUID subjectPartyId;
+
     @Column(name = "control_code", nullable = false, length = 100)
     private String controlCode;
 
@@ -56,7 +67,8 @@ public class ApplicationControlEntity extends AbstractUuidEntity {
     private BigDecimal maximumValue;
 
     @Column(name = "source_inquiry_code", length = 100)
-    private String sourceInquiryCode;
+    @Convert(converter = InquiryTypeConverter.class)
+    private InquiryType sourceInquiryCode;
 
     @Column(name = "failure_message", nullable = false, length = 500)
     private String failureMessage;
@@ -82,26 +94,38 @@ public class ApplicationControlEntity extends AbstractUuidEntity {
 
     public ApplicationControlEntity(
             LoanApplicationEntity application,
+            ControlSubjectType subjectType,
+            UUID subjectPartyId,
             String controlCode,
             String title,
             int priority,
             PlanControlType controlType,
             BigDecimal minimumValue,
             BigDecimal maximumValue,
-            String sourceInquiryCode,
+            InquiryType sourceInquiryCode,
             String failureMessage
     ) {
         this.application = Preconditions.requireNonNull(application, "application");
+        this.subjectType = Preconditions.requireNonNull(subjectType, "subjectType");
+        this.subjectPartyId = subjectPartyId;
         this.controlCode = normalized(controlCode, "controlCode");
         this.title = Preconditions.requireText(title, "title").strip();
         this.priority = Preconditions.requirePositive(priority, "priority");
         this.controlType = Preconditions.requireNonNull(controlType, "controlType");
         this.minimumValue = minimumValue;
         this.maximumValue = maximumValue;
-        this.sourceInquiryCode = sourceInquiryCode == null || sourceInquiryCode.isBlank()
-                ? null : normalized(sourceInquiryCode, "sourceInquiryCode");
+        this.sourceInquiryCode = sourceInquiryCode;
         this.failureMessage = Preconditions.requireText(failureMessage, "failureMessage").strip();
-        this.status = ApplicationControlStatus.WAITING_PRIORITY;
+        this.status = subjectType == ControlSubjectType.APPLICANT
+                ? ApplicationControlStatus.WAITING_PRIORITY
+                : ApplicationControlStatus.WAITING_SUBJECT;
+    }
+
+    public void assignSubject(UUID partyId) {
+        Preconditions.require(status == ApplicationControlStatus.WAITING_SUBJECT,
+                "Application control is not waiting for a subject");
+        subjectPartyId = Preconditions.requireNonNull(partyId, "partyId");
+        status = ApplicationControlStatus.WAITING_PRIORITY;
     }
 
     public boolean requiresInquiry() {

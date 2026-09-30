@@ -1,7 +1,7 @@
 package ir.jetvam.modules.inquiry.provider;
 
 import ir.jetvam.common.validation.Preconditions;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.service.InquiryRequests;
 import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.integration.http.DynamicProviderHttpClientFactory;
@@ -26,7 +26,7 @@ public class GenericJsonMilitaryStatusAdapter extends AbstractJsonInquiryAdapter
         super(clientFactory);
     }
 
-    @Override public String capabilityCode() { return InquiryCapabilities.MILITARY_STATUS; }
+    @Override public String capabilityCode() { return InquiryType.MILITARY_STATUS.code(); }
 
     @Override public String adapterCode() { return ADAPTER_CODE; }
 

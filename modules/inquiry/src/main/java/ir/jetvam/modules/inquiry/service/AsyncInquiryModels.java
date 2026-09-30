@@ -1,6 +1,7 @@
 package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.modules.inquiry.model.InquiryStatus;
+import ir.jetvam.common.inquiry.InquiryType;
 
 import java.util.Map;
 import java.util.UUID;
@@ -22,7 +23,7 @@ public final class AsyncInquiryModels {
     public record Callback(String transport, String destination, String correlationId) {
     }
 
-    public record Submit(String inquiryCode, String nationalCode, Callback callback) {
+    public record Submit(InquiryType inquiryCode, String nationalCode, Callback callback) {
     }
 
     public record BatchResult(long processedCount, long succeededCount, long failedCount) {
@@ -30,7 +31,7 @@ public final class AsyncInquiryModels {
 
     public record WorkItem(
             UUID requestId,
-            String inquiryCode,
+            InquiryType inquiryCode,
             String nationalCode,
             String providerCode,
             String externalTrackingCode
@@ -39,7 +40,7 @@ public final class AsyncInquiryModels {
 
     public record CompletionEvent(
             UUID requestId,
-            String inquiryCode,
+            InquiryType inquiryCode,
             InquiryStatus status,
             Map<String, String> facts,
             String rejectionCode,

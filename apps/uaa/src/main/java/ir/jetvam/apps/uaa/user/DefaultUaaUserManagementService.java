@@ -6,6 +6,9 @@ import ir.jetvam.infra.observability.audit.AuditLogger;
 import ir.jetvam.modules.identity.model.UserAccountStatus;
 import ir.jetvam.modules.identity.service.CreateAccountForPartyCommand;
 import ir.jetvam.modules.identity.service.CreateUserCommand;
+import ir.jetvam.modules.identity.service.IndividualPartyManagementService;
+import ir.jetvam.modules.identity.service.IndividualPartyView;
+import ir.jetvam.modules.identity.service.UpdateIndividualPartyCommand;
 import ir.jetvam.modules.identity.service.UserAccountService;
 import ir.jetvam.modules.identity.service.UserCredentialService;
 import ir.jetvam.modules.identity.service.UserPage;
@@ -32,6 +35,7 @@ public class DefaultUaaUserManagementService implements UaaUserManagementService
 
     private final UserAccountService userAccountService;
     private final UserCredentialService userCredentialService;
+    private final IndividualPartyManagementService partyManagementService;
     private final AuthorizationSessionService authorizationSessionService;
     private final AuditLogger auditLogger;
 
@@ -60,6 +64,31 @@ public class DefaultUaaUserManagementService implements UaaUserManagementService
     @Transactional(readOnly = true)
     public UserView get(UUID userId) {
         return userAccountService.get(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public IndividualPartyView getParty(UUID partyId) {
+        return partyManagementService.get(partyId);
+    }
+
+    @Override
+    public IndividualPartyView updateParty(
+            UUID actorUserId,
+            UUID partyId,
+            UpdateIndividualPartyCommand command
+    ) {
+        IndividualPartyView party = partyManagementService.update(partyId, command);
+        auditLogger.record(AuditEvent.builder()
+                .action("identity.party.updated")
+                .outcome("success")
+                .actorType("USER")
+                .actorId(actorUserId.toString())
+                .subjectType("PARTY")
+                .subjectId(partyId.toString())
+                .attributes(Map.of())
+                .build());
+        return party;
     }
 
     @Override

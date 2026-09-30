@@ -25,7 +25,7 @@ import java.math.BigDecimal;
 @Entity
 @Table(
         name = "product_plan_collateral",
-        uniqueConstraints = @UniqueConstraint(name = "uk_product_plan_collateral_code", columnNames = {"plan_id", "code"})
+        uniqueConstraints = @UniqueConstraint(name = "uk_product_plan_collateral_type", columnNames = {"plan_id", "collateral_type_id"})
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -35,11 +35,9 @@ public class PlanCollateralEntity extends AbstractUuidEntity {
     @JoinColumn(name = "plan_id", nullable = false)
     private PlanEntity plan;
 
-    @Column(name = "code", nullable = false, length = 100)
-    private String code;
-
-    @Column(name = "title", nullable = false, length = 200)
-    private String title;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "collateral_type_id", nullable = false)
+    private CollateralTypeEntity collateralType;
 
     @Column(name = "minimum_coverage_percent", nullable = false, precision = 7, scale = 2)
     private BigDecimal minimumCoveragePercent;
@@ -50,25 +48,22 @@ public class PlanCollateralEntity extends AbstractUuidEntity {
     @Column(name = "enabled", nullable = false)
     private boolean enabled;
 
-    @Column(name = "configuration_json", nullable = false, columnDefinition = "text")
-    private String configurationJson;
-
     public PlanCollateralEntity(
             PlanEntity plan,
-            String code,
-            String title,
+            CollateralTypeEntity collateralType,
             BigDecimal minimumCoveragePercent,
             boolean required,
-            boolean enabled,
-            String configurationJson
+            boolean enabled
     ) {
         this.plan = Preconditions.requireNonNull(plan, "plan");
-        this.code = normalize(code);
-        this.title = Preconditions.requireText(title, "title").strip();
+        this.collateralType = Preconditions.requireNonNull(collateralType, "collateralType");
+        reconfigure(minimumCoveragePercent, required, enabled);
+    }
+
+    public void reconfigure(BigDecimal minimumCoveragePercent, boolean required, boolean enabled) {
         this.minimumCoveragePercent = requireNonNegative(minimumCoveragePercent, "minimumCoveragePercent");
         this.required = required;
         this.enabled = enabled;
-        this.configurationJson = jsonOrEmpty(configurationJson);
     }
 
     private static BigDecimal requireNonNegative(BigDecimal value, String name) {
@@ -77,11 +72,4 @@ public class PlanCollateralEntity extends AbstractUuidEntity {
         return value;
     }
 
-    private static String normalize(String value) {
-        return Preconditions.requireText(value, "code").strip().toUpperCase();
-    }
-
-    private static String jsonOrEmpty(String value) {
-        return value == null || value.isBlank() ? "{}" : value.strip();
-    }
 }

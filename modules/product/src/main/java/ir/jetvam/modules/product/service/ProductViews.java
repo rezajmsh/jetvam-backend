@@ -2,6 +2,9 @@ package ir.jetvam.modules.product.service;
 
 import ir.jetvam.modules.product.model.PublicationStatus;
 import ir.jetvam.modules.product.model.PlanControlType;
+import ir.jetvam.modules.product.model.ControlSubjectType;
+import ir.jetvam.modules.product.model.ControlParameterRole;
+import ir.jetvam.modules.product.model.ControlParameterDataType;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -43,47 +46,44 @@ public final class ProductViews {
             BigDecimal annualInterestRate,
             PublicationStatus status,
             long version,
-            List<Inquiry> inquiries,
-            List<Guarantee> guarantees,
+            GuarantorPolicy guarantorPolicy,
+            List<Collateral> guarantorCollaterals,
             List<Collateral> collaterals,
             List<Fee> fees,
             List<Control> controls
     ) {
     }
 
-    public record Inquiry(
-            String code,
-            String title,
-            String stageCode,
-            int sequence,
-            boolean required,
-            boolean enabled,
-            String configurationJson
-    ) {
-    }
-
-    public record Guarantee(
-            String code,
-            String title,
+    public record GuarantorPolicy(
             int minimumCount,
             int maximumCount,
             boolean required,
-            boolean enabled,
-            String configurationJson
+            boolean requiresCollateral,
+            boolean enabled
     ) {
     }
 
     public record Collateral(
+            UUID collateralTypeId,
             String code,
             String title,
+            String handlerCode,
+            boolean requiresPhysicalDelivery,
             BigDecimal minimumCoveragePercent,
             boolean required,
             boolean enabled,
-            String configurationJson
+            List<DocumentRequirement> documentRequirements
+    ) {
+    }
+
+    public record DocumentRequirement(
+            UUID documentTypeId, String documentTypeCode, String documentTypeTitle, String allowedContentTypes,
+            long maximumSizeBytes, boolean required, int minimumCount, int maximumCount, int displayOrder
     ) {
     }
 
     public record Fee(
+            UUID feeDefinitionId,
             String code,
             String title,
             BigDecimal amount,
@@ -96,15 +96,24 @@ public final class ProductViews {
     }
 
     public record Control(
+            UUID controlDefinitionId,
             String code,
             String title,
             int priority,
             PlanControlType type,
+            ControlSubjectType subjectType,
             BigDecimal minimumValue,
             BigDecimal maximumValue,
             String sourceInquiryCode,
             String failureMessage,
+            List<ControlParameter> parameters,
             boolean enabled
+    ) {
+    }
+
+    public record ControlParameter(
+            UUID parameterDefinitionId, String code, String title, ControlParameterRole valueRole,
+            ControlParameterDataType dataType, boolean required, BigDecimal value
     ) {
     }
 }

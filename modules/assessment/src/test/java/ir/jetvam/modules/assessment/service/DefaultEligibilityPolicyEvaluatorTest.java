@@ -29,11 +29,36 @@ class DefaultEligibilityPolicyEvaluatorTest {
 
         AssessmentModels.PolicyResult result = evaluator.evaluate(
                 controls,
-                new AssessmentModels.Facts(LocalDate.of(1990, 1, 1), 4, false),
+                new AssessmentModels.Facts(LocalDate.of(1990, 1, 1), 4, 0, BigDecimal.ZERO),
                 LocalDate.of(2026, 9, 25)
         );
 
         assertThat(result.eligible()).isTrue();
         assertThat(result.controls()).allMatch(AssessmentModels.ControlResult::passed);
+    }
+
+    @Test
+    void evaluatesMaximumBadChequeCountAndAmountIndependently() {
+        List<AssessmentModels.PolicyControl> controls = List.of(
+                new AssessmentModels.PolicyControl(
+                        "CHEQUE_COUNT", PlanControlType.MAXIMUM_BAD_CHEQUE_COUNT,
+                        null, BigDecimal.valueOf(2), "count"
+                ),
+                new AssessmentModels.PolicyControl(
+                        "CHEQUE_AMOUNT", PlanControlType.MAXIMUM_BAD_CHEQUE_AMOUNT,
+                        null, BigDecimal.valueOf(50_000_000), "amount"
+                )
+        );
+
+        AssessmentModels.PolicyResult result = evaluator.evaluate(
+                controls,
+                new AssessmentModels.Facts(
+                        LocalDate.of(1990, 1, 1), null, 2, BigDecimal.valueOf(70_000_000)
+                ),
+                LocalDate.of(2026, 9, 25)
+        );
+
+        assertThat(result.controls()).extracting(AssessmentModels.ControlResult::passed)
+                .containsExactly(true, false);
     }
 }

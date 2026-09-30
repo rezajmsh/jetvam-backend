@@ -2,6 +2,7 @@ package ir.jetvam.modules.inquiry.repository;
 
 import ir.jetvam.infra.persistence.repository.JetvamJpaRepository;
 import ir.jetvam.modules.inquiry.model.InquiryDefinitionEntity;
+import ir.jetvam.common.inquiry.InquiryType;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -14,5 +15,5 @@ import java.util.UUID;
  */
 public interface InquiryDefinitionRepository extends JetvamJpaRepository<InquiryDefinitionEntity, UUID> {
 
-    Optional<InquiryDefinitionEntity> findByInquiryCode(String inquiryCode);
+    Optional<InquiryDefinitionEntity> findByInquiryCode(InquiryType inquiryCode);
 }

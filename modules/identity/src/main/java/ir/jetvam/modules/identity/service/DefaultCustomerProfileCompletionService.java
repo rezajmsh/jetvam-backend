@@ -5,10 +5,8 @@ import ir.jetvam.common.security.UserCategory;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.modules.identity.model.AuthenticationMethod;
-import ir.jetvam.modules.identity.persistence.CustomerProfileEntity;
 import ir.jetvam.modules.identity.persistence.IndividualPartyEntity;
 import ir.jetvam.modules.identity.persistence.UserAccountEntity;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +29,6 @@ public class DefaultCustomerProfileCompletionService implements CustomerProfileC
 
     private final IndividualPartyRepository individualRepository;
     private final UserAccountRepository userRepository;
-    private final CustomerProfileRepository customerProfileRepository;
     private final TimeProvider timeProvider;
 
     @Override
@@ -51,19 +48,18 @@ public class DefaultCustomerProfileCompletionService implements CustomerProfileC
         UUID partyId = account.getParty().getId();
         IndividualPartyEntity individual = individualRepository.findById(partyId)
                 .orElseThrow(() -> new ResourceNotFoundException("individualParty", partyId));
-        CustomerProfileEntity profile = customerProfileRepository.findByPartyId(partyId)
-                .orElseThrow(() -> new ResourceNotFoundException("customerProfile", partyId));
-
         individual.completeIdentity(firstName, lastName, birthDate);
-        account.getParty().changeDisplayName(firstName + " " + lastName);
-        profile.complete();
         return new CustomerProfileView(
                 account.getId(),
                 partyId,
                 individual.getFirstName(),
                 individual.getLastName(),
                 individual.getBirthDate(),
-                profile.getOnboardingStatus()
+                individual.getMobileVerificationStatus(),
+                individual.getShahkarStatus(),
+                individual.getIdentityVerificationStatus(),
+                individual.hasCompleteIdentityInformation(),
+                individual.hasCompletePersonalInformation()
         );
     }
 }

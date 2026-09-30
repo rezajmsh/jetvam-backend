@@ -11,22 +11,6 @@ spring:
       enabled: true
   jpa:
     open-in-view: false
-  quartz:
-    job-store-type: jdbc
-    jdbc:
-      initialize-schema: never
-    overwrite-existing-jobs: false
-    wait-for-jobs-to-complete-on-shutdown: true
-    properties:
-      org.quartz.scheduler.instanceName: jetvam-jobs
-      org.quartz.scheduler.instanceId: AUTO
-      org.quartz.jobStore.driverDelegateClass: org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
-      org.quartz.jobStore.tablePrefix: QRTZ_
-      org.quartz.jobStore.isClustered: true
-      org.quartz.jobStore.clusterCheckinInterval: 10000
-      org.quartz.jobStore.useProperties: true
-      org.quartz.threadPool.threadCount: ${JETVAM_JOBS_THREAD_COUNT:10}
-
 springdoc:
   enable-default-api-docs: false
   swagger-ui:
@@ -54,6 +38,7 @@ logging:
   level:
     jetvam.http.client: ${JETVAM_HTTP_LOG_LEVEL:INFO}
     jetvam.notification.delivery: ${JETVAM_NOTIFICATION_LOG_LEVEL:INFO}
+    jetvam.inquiry.worker: ${JETVAM_INQUIRY_LOG_LEVEL:INFO}
     jetvam.repository: ${JETVAM_REPOSITORY_LOG_LEVEL:INFO}
     jetvam.audit: ${JETVAM_AUDIT_LOG_LEVEL:INFO}
     org.hibernate.SQL: ${JETVAM_HIBERNATE_SQL_LOG_LEVEL:OFF}
@@ -77,10 +62,11 @@ management:
       deployment.environment.name: ${JETVAM_ENVIRONMENT:local}
 
 jetvam:
+  otp:
+    validation-enabled: false
   security:
     resource-server:
       enabled: true
-      public-paths: [/actuator/health/**, /actuator/info, /v3/api-docs/**, /swagger-ui/**, /swagger-ui.html]
   observability:
     enabled: true
     logging:
@@ -162,6 +148,10 @@ jetvam:
     cache-name: i18n-messages
   jobs:
     enabled: true
+    scheduler-thread-count: ${JETVAM_JOBS_SCHEDULER_THREAD_COUNT:2}
+    execution-concurrency: ${JETVAM_JOBS_EXECUTION_CONCURRENCY:10}
+    lock-duration: ${JETVAM_JOBS_LOCK_DURATION:1h}
+    instance-id: ${JETVAM_JOBS_INSTANCE_ID:${spring.application.name}-${random.uuid}}
   inquiry:
     api:
       enabled: false

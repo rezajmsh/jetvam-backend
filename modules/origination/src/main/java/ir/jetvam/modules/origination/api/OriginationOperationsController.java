@@ -8,11 +8,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import java.util.List;
 
 /**
  * Exposes controlled operational actions that cannot be performed by the customer frontend.
@@ -30,10 +32,16 @@ public class OriginationOperationsController {
 
     private final LoanApplicationService applicationService;
 
-    @PostMapping("/{applicationId}/original-cheque-received")
-    @Operation(summary = "Confirm original cheque", description = "Records operational receipt and validation of the original guarantee cheque.")
-    public OriginationModels.ApplicationView originalCheque(@PathVariable UUID applicationId) {
-        return applicationService.markOriginalChequeReceived(applicationId);
+    @GetMapping
+    @Operation(summary = "List applications for operations")
+    public List<OriginationModels.ApplicationView> findAll() {
+        return applicationService.findAllForOperations();
+    }
+
+    @PostMapping("/{applicationId}/original-collaterals-received")
+    @Operation(summary = "Confirm original collaterals", description = "Records operational receipt of every required physical collateral for the application.")
+    public OriginationModels.ApplicationView originalCollaterals(@PathVariable UUID applicationId) {
+        return applicationService.markOriginalCollateralsReceived(applicationId);
     }
 
     @PostMapping("/{applicationId}/credit-allocated")

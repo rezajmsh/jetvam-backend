@@ -1,7 +1,7 @@
 package ir.jetvam.modules.product.service;
 
 import ir.jetvam.modules.product.model.PublicationStatus;
-import ir.jetvam.modules.product.model.PlanControlType;
+import ir.jetvam.modules.product.model.ControlSubjectType;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -51,75 +51,55 @@ public final class ProductCommands {
     }
 
     public record ConfigurePlan(
-            List<InquiryRule> inquiries,
-            List<GuaranteeRule> guarantees,
+            GuarantorPolicy guarantorPolicy,
+            List<CollateralRule> guarantorCollaterals,
             List<CollateralRule> collaterals,
             List<FeeRule> fees,
             List<ControlRule> controls
     ) {
         public ConfigurePlan {
-            inquiries = inquiries == null ? List.of() : List.copyOf(inquiries);
-            guarantees = guarantees == null ? List.of() : List.copyOf(guarantees);
+            guarantorCollaterals = guarantorCollaterals == null ? List.of() : List.copyOf(guarantorCollaterals);
             collaterals = collaterals == null ? List.of() : List.copyOf(collaterals);
             fees = fees == null ? List.of() : List.copyOf(fees);
             controls = controls == null ? List.of() : List.copyOf(controls);
         }
     }
 
-    public record InquiryRule(
-            String code,
-            String title,
-            String stageCode,
-            int sequence,
-            boolean required,
-            boolean enabled,
-            String configurationJson
-    ) {
-    }
-
-    public record GuaranteeRule(
-            String code,
-            String title,
+    public record GuarantorPolicy(
             int minimumCount,
             int maximumCount,
             boolean required,
-            boolean enabled,
-            String configurationJson
+            boolean requiresCollateral,
+            boolean enabled
     ) {
     }
 
     public record CollateralRule(
-            String code,
-            String title,
+            java.util.UUID collateralTypeId,
             BigDecimal minimumCoveragePercent,
             boolean required,
-            boolean enabled,
-            String configurationJson
+            boolean enabled
     ) {
     }
 
     public record FeeRule(
-            String code,
-            String title,
-            BigDecimal amount,
-            String currency,
-            String triggerCode,
-            String sourceInquiryCode,
-            boolean refundable,
+            java.util.UUID feeDefinitionId,
             boolean enabled
     ) {
     }
 
     public record ControlRule(
-            String code,
-            String title,
+            java.util.UUID controlDefinitionId,
+            ControlSubjectType subjectType,
             int priority,
-            PlanControlType type,
-            BigDecimal minimumValue,
-            BigDecimal maximumValue,
-            String sourceInquiryCode,
-            String failureMessage,
+            List<ControlParameterValue> parameters,
             boolean enabled
     ) {
+        public ControlRule {
+            parameters = parameters == null ? List.of() : List.copyOf(parameters);
+        }
+    }
+
+    public record ControlParameterValue(java.util.UUID parameterDefinitionId, BigDecimal numericValue) {
     }
 }

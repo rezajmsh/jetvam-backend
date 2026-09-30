@@ -1,6 +1,6 @@
 package ir.jetvam.modules.inquiry.provider;
 
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.service.InquiryRequests;
 import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.integration.http.DynamicProviderHttpClientFactory;
@@ -27,7 +27,7 @@ public class GenericJsonMobileOwnershipAdapter extends AbstractJsonInquiryAdapte
 
     @Override
     public String capabilityCode() {
-        return InquiryCapabilities.MOBILE_OWNERSHIP;
+        return InquiryType.MOBILE_OWNERSHIP.code();
     }
 
     @Override

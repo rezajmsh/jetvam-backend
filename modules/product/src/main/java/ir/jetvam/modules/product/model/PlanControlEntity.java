@@ -3,12 +3,12 @@ package ir.jetvam.modules.product.model;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.infra.persistence.entity.AbstractUuidEntity;
 import jakarta.persistence.Column;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
@@ -16,6 +16,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 /**
  * Declares one eligibility policy attached to a plan and its optional inquiry dependency.
@@ -27,7 +30,10 @@ import java.math.BigDecimal;
 @Entity
 @Table(
         name = "product_plan_control",
-        uniqueConstraints = @UniqueConstraint(name = "uk_product_plan_control_code", columnNames = {"plan_id", "code"})
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_product_plan_control_definition",
+                columnNames = {"plan_id", "subject_type", "control_definition_id"}
+        )
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -37,100 +43,97 @@ public class PlanControlEntity extends AbstractUuidEntity {
     @JoinColumn(name = "plan_id", nullable = false)
     private PlanEntity plan;
 
-    @Column(name = "code", nullable = false, length = 100)
-    private String code;
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "control_definition_id", nullable = false)
+    private ControlDefinitionEntity controlDefinition;
 
-    @Column(name = "title", nullable = false, length = 200)
-    private String title;
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    @Column(name = "subject_type", nullable = false, length = 20)
+    private ControlSubjectType subjectType;
 
     @Column(name = "priority", nullable = false)
     private int priority;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "control_type", nullable = false, length = 40)
-    private PlanControlType type;
-
-    @Column(name = "minimum_value", precision = 19, scale = 4)
-    private BigDecimal minimumValue;
-
-    @Column(name = "maximum_value", precision = 19, scale = 4)
-    private BigDecimal maximumValue;
-
-    @Column(name = "source_inquiry_code", length = 100)
-    private String sourceInquiryCode;
-
-    @Column(name = "failure_message", nullable = false, length = 500)
-    private String failureMessage;
-
     @Column(name = "enabled", nullable = false)
     private boolean enabled;
 
+    @OneToMany(mappedBy = "planControl", cascade = CascadeType.ALL, orphanRemoval = true)
+    private final Set<PlanControlParameterValueEntity> parameterValues = new LinkedHashSet<>();
+
     public PlanControlEntity(
             PlanEntity plan,
-            String code,
-            String title,
+            ControlDefinitionEntity controlDefinition,
+            ControlSubjectType subjectType,
             int priority,
-            PlanControlType type,
-            BigDecimal minimumValue,
-            BigDecimal maximumValue,
-            String sourceInquiryCode,
-            String failureMessage,
-            boolean enabled
+            boolean enabled,
+            Collection<ParameterValue> values
     ) {
         this.plan = Preconditions.requireNonNull(plan, "plan");
-        this.code = normalize(code, "code");
-        this.title = Preconditions.requireText(title, "title").strip();
+        this.controlDefinition = Preconditions.requireNonNull(controlDefinition, "controlDefinition");
+        this.subjectType = Preconditions.requireNonNull(subjectType, "subjectType");
+        reconfigure(priority, enabled, values);
+    }
+
+    public BigDecimal value(ControlParameterRole role) {
+        return parameterValues.stream()
+                .filter(value -> value.getParameterDefinition().getValueRole() == role)
+                .map(PlanControlParameterValueEntity::getNumericValue)
+                .findFirst().orElse(null);
+    }
+
+    public void reconfigure(int priority, boolean enabled, Collection<ParameterValue> values) {
+        Collection<ParameterValue> safeValues = Preconditions.requireNonNull(values, "values");
+        Set<java.util.UUID> supplied = new java.util.HashSet<>();
+        java.util.Map<java.util.UUID, ResolvedParameter> resolved = new java.util.LinkedHashMap<>();
+        safeValues.forEach(value -> {
+            ControlParameterDefinitionEntity definition = controlDefinition.getParameters().stream()
+                    .filter(item -> item.getId().equals(value.parameterDefinitionId()))
+                    .findFirst().orElseThrow(() -> new IllegalArgumentException(
+                            "Parameter does not belong to selected control: " + value.parameterDefinitionId()));
+            Preconditions.require(supplied.add(definition.getId()), "Duplicate control parameter");
+            Preconditions.require(value.numericValue() != null && value.numericValue().signum() >= 0,
+                    "Control parameter value must not be negative");
+            if (definition.getDataType() == ControlParameterDataType.INTEGER) {
+                Preconditions.require(isWholeNumber(value.numericValue()), "Control parameter must be an integer");
+            }
+            resolved.put(definition.getId(), new ResolvedParameter(definition, value.numericValue()));
+        });
+        controlDefinition.getParameters().stream().filter(ControlParameterDefinitionEntity::isRequired)
+                .forEach(definition -> Preconditions.require(supplied.contains(definition.getId()),
+                        "Required control parameter is missing: " + definition.getCode()));
+        BigDecimal minimum = resolved.values().stream()
+                .filter(item -> item.definition().getValueRole() == ControlParameterRole.MINIMUM)
+                .map(ResolvedParameter::value).findFirst().orElse(null);
+        BigDecimal maximum = resolved.values().stream()
+                .filter(item -> item.definition().getValueRole() == ControlParameterRole.MAXIMUM)
+                .map(ResolvedParameter::value).findFirst().orElse(null);
+        if (minimum != null && maximum != null) {
+            Preconditions.require(maximum.compareTo(minimum) >= 0,
+                    "Maximum control parameter must not be less than minimum");
+        }
+        Preconditions.require(!controlDefinition.getParameters().isEmpty() || safeValues.isEmpty(),
+                "This control does not accept parameters");
         this.priority = Preconditions.requirePositive(priority, "priority");
-        this.type = Preconditions.requireNonNull(type, "type");
-        this.minimumValue = nonNegativeOrNull(minimumValue, "minimumValue");
-        this.maximumValue = nonNegativeOrNull(maximumValue, "maximumValue");
-        this.sourceInquiryCode = sourceInquiryCode == null || sourceInquiryCode.isBlank()
-                ? null : normalize(sourceInquiryCode, "sourceInquiryCode");
-        this.failureMessage = Preconditions.requireText(failureMessage, "failureMessage").strip();
         this.enabled = enabled;
-        validateTypeConfiguration();
-    }
-
-    private void validateTypeConfiguration() {
-        switch (type) {
-            case AGE_RANGE -> {
-                Preconditions.require(minimumValue != null || maximumValue != null,
-                        "AGE_RANGE requires minimumValue or maximumValue");
-                if (minimumValue != null && maximumValue != null) {
-                    Preconditions.require(maximumValue.compareTo(minimumValue) >= 0,
-                            "AGE_RANGE maximumValue must not be less than minimumValue");
-                }
-                Preconditions.require(sourceInquiryCode == null, "AGE_RANGE must not reference an inquiry");
-            }
-            case MINIMUM_CREDIT_RANK -> {
-                Preconditions.require(minimumValue != null, "MINIMUM_CREDIT_RANK requires minimumValue");
-                Preconditions.require(isWholeNumber(minimumValue),
-                        "MINIMUM_CREDIT_RANK minimumValue must be a whole number");
-                Preconditions.require(sourceInquiryCode != null,
-                        "MINIMUM_CREDIT_RANK requires sourceInquiryCode");
-                Preconditions.require(maximumValue == null,
-                        "MINIMUM_CREDIT_RANK does not support maximumValue");
-            }
-            case NO_BAD_CHEQUE -> {
-                Preconditions.require(sourceInquiryCode != null, "NO_BAD_CHEQUE requires sourceInquiryCode");
-                Preconditions.require(minimumValue == null && maximumValue == null,
-                        "NO_BAD_CHEQUE does not support thresholds");
-            }
-        }
-    }
-
-    private static BigDecimal nonNegativeOrNull(BigDecimal value, String name) {
-        if (value != null) {
-            Preconditions.require(value.signum() >= 0, name + " must not be negative");
-        }
-        return value;
+        parameterValues.removeIf(item -> !resolved.containsKey(item.getParameterDefinition().getId()));
+        resolved.forEach((definitionId, parameter) -> parameterValues.stream()
+                .filter(item -> item.getParameterDefinition().getId().equals(definitionId))
+                .findFirst()
+                .ifPresentOrElse(
+                        item -> item.update(parameter.value()),
+                        () -> parameterValues.add(new PlanControlParameterValueEntity(
+                                this, parameter.definition(), parameter.value()
+                        ))
+                ));
     }
 
     private static boolean isWholeNumber(BigDecimal value) {
         return value.stripTrailingZeros().scale() <= 0;
     }
 
-    private static String normalize(String value, String name) {
-        return Preconditions.requireText(value, name).strip().toUpperCase();
+    public record ParameterValue(java.util.UUID parameterDefinitionId, BigDecimal numericValue) {
+    }
+
+    private record ResolvedParameter(ControlParameterDefinitionEntity definition, BigDecimal value) {
     }
 }

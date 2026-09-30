@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 /**
- * Context shared with handlers without exposing Quartz or persistence types.
+ * Context shared with handlers without exposing scheduler or persistence types.
  *
  * @author reza jamshidi
  * @since 9/23/2026

@@ -79,13 +79,13 @@ jetvam:
       key-password: ${JETVAM_JWT_KEY_PASSWORD:}
       allow-ephemeral: ${JETVAM_JWT_ALLOW_EPHEMERAL:true}
     bootstrap-admin:
-      enabled: ${JETVAM_BOOTSTRAP_ADMIN_ENABLED:false}
-      username: ${JETVAM_BOOTSTRAP_ADMIN_USERNAME:}
-      mobile: ${JETVAM_BOOTSTRAP_ADMIN_MOBILE:}
-      national-code: ${JETVAM_BOOTSTRAP_ADMIN_NATIONAL_CODE:}
-      first-name: ${JETVAM_BOOTSTRAP_ADMIN_FIRST_NAME:}
-      last-name: ${JETVAM_BOOTSTRAP_ADMIN_LAST_NAME:}
-      password: ${JETVAM_BOOTSTRAP_ADMIN_PASSWORD:}
+      enabled: ${JETVAM_BOOTSTRAP_ADMIN_ENABLED:true}
+      username: ${JETVAM_BOOTSTRAP_ADMIN_USERNAME:admin}
+      mobile: ${JETVAM_BOOTSTRAP_ADMIN_MOBILE:09125371154}
+      national-code: ${JETVAM_BOOTSTRAP_ADMIN_NATIONAL_CODE:0068347456}
+      first-name: ${JETVAM_BOOTSTRAP_ADMIN_FIRST_NAME:رضا}
+      last-name: ${JETVAM_BOOTSTRAP_ADMIN_LAST_NAME:جمشیدی}
+      password: ${JETVAM_BOOTSTRAP_ADMIN_PASSWORD:1234567890}
   otp:
     code-length: ${JETVAM_OTP_CODE_LENGTH:6}
     time-to-live: ${JETVAM_OTP_TTL:2m}

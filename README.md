@@ -47,7 +47,7 @@ infrastructure -X-> business modules
 
 ## Business modules
 
-- `identity`: Party، پروفایل مشتری، account، role، OTP و احراز هویت
+- `identity`: Party، account، role، OTP و وضعیت‌های مستقل تأیید موبایل/شاهکار/هویت
 - `inquiry`: اجرای پایدار استعلام‌ها، نگهداری نتیجه، اعتبار زمانی و callback
 - `product`: طرح تسهیلاتی عمومی/سازمانی، audience و policyهای هر طرح
 - `origination`: درخواست تسهیلات، مراحل و ادامه درخواست نیمه‌تمام
@@ -63,7 +63,13 @@ infrastructure -X-> business modules
 
 در ماژول identity، `PartyEntity` ریشه abstract با استراتژی JPA `JOINED` است و
 `IndividualPartyEntity` و `OrganizationPartyEntity` subtypeهای آن هستند. ستون `party_type`
-نقش discriminator را دارد. `CustomerProfileEntity` و `UserAccountEntity` subtype نیستند و به Party متصل می‌شوند.
+نقش discriminator را دارد. اطلاعات هویتی و تماس متعلق به Party است؛ اطلاعات شغلی و تحصیلی متغیر به‌صورت snapshot در درخواست نگهداری می‌شود.
+
+پس از بازنویسی migrationهای baseline، دیتابیس توسعه را فقط با تأیید صریح پاک کنید:
+
+```powershell
+.\reset-database.ps1 -Force
+```
 
 ## Build
 
@@ -138,3 +144,7 @@ providerها به‌صورت پیش‌فرض fail-closed هستند.
 از همین مسیر `NotificationDeliveryService` ماژول Notification را اجرا می‌کند. زیرساخت Quartz، مدل
 مدیریت job و تاریخچه نیز به دلیل اختصاصی بودن به همین runtime داخل `jetvam-jobs-app` نگهداری می‌شوند.
 هر execution تعداد کل آیتم‌های پردازش‌شده، موفق و خطادار را به‌صورت مستقل ثبت می‌کند.
+
+job دوم با کد `inquiry-dispatch` درخواست‌های آماده استعلام، poll سرویس‌های چندمرحله‌ای و callback نتیجه
+را پردازش می‌کند. providerهای mock اولیه برای محیط توسعه از همان Provider Router استفاده می‌کنند؛ بنابراین
+جایگزینی آن‌ها با provider واقعی فقط با تعریف adapter و تنظیم route انجام می‌شود و workflow تغییر نمی‌کند.

@@ -8,14 +8,20 @@ import ir.jetvam.modules.payment.model.FeeCategory;
 import ir.jetvam.modules.payment.model.FeeObligationEntity;
 import ir.jetvam.modules.payment.model.FeeStatus;
 import ir.jetvam.modules.payment.model.PaymentAttemptEntity;
+import ir.jetvam.modules.payment.model.PaymentGatewayEntity;
 import ir.jetvam.modules.payment.repository.FeeObligationRepository;
 import ir.jetvam.modules.payment.repository.PaymentAttemptRepository;
+import ir.jetvam.modules.payment.repository.PaymentGatewayRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 
 /**
  * Implements fee obligations and idempotent payment confirmation without trusting customer callbacks.
@@ -29,6 +35,7 @@ public class DefaultPaymentService implements PaymentService {
 
     private final FeeObligationRepository feeRepository;
     private final PaymentAttemptRepository attemptRepository;
+    private final PaymentGatewayRepository gatewayRepository;
     private final TimeProvider timeProvider;
 
     @Override
@@ -97,7 +104,7 @@ public class DefaultPaymentService implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentModels.AttemptView initiate(UUID customerPartyId, UUID feeId, String idempotencyKey) {
+    public PaymentModels.AttemptView initiate(UUID customerPartyId, UUID feeId, String idempotencyKey, String returnUrl) {
         String key = Preconditions.requireText(idempotencyKey, "idempotencyKey").strip();
         return attemptRepository.findByIdempotencyKey(key)
                 .map(attempt -> {
@@ -117,7 +124,13 @@ public class DefaultPaymentService implements PaymentService {
                     if (fee.getStatus() != FeeStatus.PENDING) {
                         throw new OperationNotAllowedException("initiate-payment", "Fee is not pending");
                     }
-                    return toView(attemptRepository.save(new PaymentAttemptEntity(fee, key)));
+                    PaymentGatewayEntity gateway = gatewayRepository.findFirstByActiveTrueOrderByGatewayCodeAsc()
+                            .orElseThrow(() -> new OperationNotAllowedException("initiate-payment", "No active payment gateway"));
+                    PaymentAttemptEntity attempt = attemptRepository.save(new PaymentAttemptEntity(fee, key));
+                    String token = UUID.randomUUID().toString();
+                    String redirectUrl = "/api/v1/payments/mock/" + attempt.getId() + "?token=" + token;
+                    attempt.prepareCheckout(gateway.getGatewayCode(), hash(token), returnUrl, redirectUrl);
+                    return toView(attempt);
                 });
     }
 
@@ -141,6 +154,46 @@ public class DefaultPaymentService implements PaymentService {
         );
     }
 
+    @Override
+    @Transactional
+    public PaymentModels.AttemptView completeMock(UUID attemptId, String checkoutToken, boolean successful) {
+        PaymentAttemptEntity attempt = attemptRepository.findById(Preconditions.requireNonNull(attemptId, "attemptId"))
+                .orElseThrow(() -> new ResourceNotFoundException("paymentAttempt", attemptId));
+        Preconditions.require("MOCK".equals(attempt.getGatewayCode()), "Attempt does not belong to mock gateway");
+        Preconditions.require(MessageDigest.isEqual(
+                hash(checkoutToken).getBytes(StandardCharsets.UTF_8),
+                attempt.getCheckoutTokenHash().getBytes(StandardCharsets.UTF_8)
+        ), "Invalid payment callback token");
+        attempt.complete(successful, "MOCK-" + attemptId, timeProvider.now());
+        return toView(attempt);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<PaymentModels.GatewayView> findGateways() {
+        return gatewayRepository.findAllByOrderByGatewayCodeAsc().stream().map(DefaultPaymentService::toView).toList();
+    }
+
+    @Override
+    @Transactional
+    public PaymentModels.GatewayView updateGateway(
+            String gatewayCode,
+            String title,
+            String configurationJson,
+            boolean active
+    ) {
+        PaymentGatewayEntity gateway = gatewayRepository.findByGatewayCode(
+                        Preconditions.requireText(gatewayCode, "gatewayCode").strip().toUpperCase())
+                .orElseThrow(() -> new ResourceNotFoundException("paymentGateway", gatewayCode));
+        if (active) {
+            gatewayRepository.findFirstByActiveTrueOrderByGatewayCodeAsc()
+                    .filter(current -> !current.getId().equals(gateway.getId()))
+                    .ifPresent(current -> current.update(current.getTitle(), current.getConfigurationJson(), false));
+        }
+        gateway.update(title, configurationJson, active);
+        return toView(gateway);
+    }
+
     private static void requireOwner(FeeObligationEntity fee, UUID customerPartyId) {
         if (!fee.getCustomerPartyId().equals(customerPartyId)) {
             throw new OperationNotAllowedException("access-payment", "Payment does not belong to this customer");
@@ -149,15 +202,32 @@ public class DefaultPaymentService implements PaymentService {
 
     private static PaymentModels.FeeView toView(FeeObligationEntity fee) {
         return new PaymentModels.FeeView(
-                fee.getId(), fee.getReferenceId(), fee.getFeeCode(), fee.getTitle(), fee.getCategory(),
-                fee.getAmount(), fee.getCurrency(), fee.getActivationKey(), fee.getStatus(), fee.getPaidAt()
+                fee.getId(), fee.getReferenceType(), fee.getReferenceId(), fee.getFeeCode(), fee.getTitle(),
+                fee.getCategory(), fee.getAmount(), fee.getCurrency(), fee.getActivationKey(), fee.getStatus(),
+                fee.getPaidAt(), fee.getCreatedAt()
         );
     }
 
     private static PaymentModels.AttemptView toView(PaymentAttemptEntity attempt) {
         return new PaymentModels.AttemptView(
                 attempt.getId(), attempt.getFeeObligation().getId(), attempt.getStatus(),
-                attempt.getProviderReference()
+                attempt.getProviderReference(), attempt.getGatewayCode(), attempt.getRedirectUrl(), attempt.getReturnUrl()
         );
+    }
+
+    private static PaymentModels.GatewayView toView(PaymentGatewayEntity gateway) {
+        return new PaymentModels.GatewayView(
+                gateway.getId(), gateway.getGatewayCode(), gateway.getTitle(), gateway.getAdapterCode(),
+                gateway.getConfigurationJson(), gateway.isActive()
+        );
+    }
+
+    private static String hash(String value) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(Preconditions.requireText(value, "checkoutToken").getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 }

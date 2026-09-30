@@ -13,6 +13,7 @@ import ir.jetvam.modules.origination.model.LoanApplicationEntity;
 import ir.jetvam.modules.payment.service.PaymentModels;
 import ir.jetvam.modules.payment.service.PaymentService;
 import ir.jetvam.modules.product.model.PlanControlType;
+import ir.jetvam.modules.product.model.ControlSubjectType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -43,17 +44,23 @@ public class OriginationControlOrchestrator {
                 && application.getStatus() != ApplicationStatus.WAITING_CONTROL_FEE) {
             return;
         }
+        if (!evaluateLocalControls(application)) {
+            return;
+        }
         while (true) {
             Optional<ApplicationControlEntity> next = application.getControls().stream()
+                    .filter(control -> control.getSubjectType() == ControlSubjectType.APPLICANT)
                     .filter(control -> control.getStatus() == ApplicationControlStatus.WAITING_PRIORITY
                             || control.getStatus() == ApplicationControlStatus.BLOCKED_BY_PAYMENT)
                     .min(Comparator.comparingInt(ApplicationControlEntity::getPriority));
             if (next.isEmpty()) {
                 boolean running = application.getControls().stream().anyMatch(control ->
-                        control.getStatus() == ApplicationControlStatus.PENDING_INQUIRY
+                        control.getSubjectType() == ControlSubjectType.APPLICANT
+                                && (control.getStatus() == ApplicationControlStatus.PENDING_INQUIRY
                                 || control.getStatus() == ApplicationControlStatus.INQUIRY_SUBMITTED
-                );
+                        ));
                 if (!running && application.getControls().stream()
+                        .filter(control -> control.getSubjectType() == ControlSubjectType.APPLICANT)
                         .allMatch(control -> control.getStatus() == ApplicationControlStatus.PASSED)) {
                     paymentService.activate(application.getId(), PaymentModels.APPLICATION_APPROVED);
                     application.controlsPassed();
@@ -78,8 +85,8 @@ public class OriginationControlOrchestrator {
                     }
                     continue;
                 }
-                paymentService.activate(application.getId(), control.getSourceInquiryCode());
-                if (!paymentService.allPaid(application.getId(), control.getSourceInquiryCode())) {
+                paymentService.activate(application.getId(), control.getSourceInquiryCode().code());
+                if (!paymentService.allPaid(application.getId(), control.getSourceInquiryCode().code())) {
                     if (control.getStatus() == ApplicationControlStatus.WAITING_PRIORITY) {
                         control.blockByPayment();
                     }
@@ -90,12 +97,27 @@ public class OriginationControlOrchestrator {
                 inquiryService.submit(application, control);
                 return;
             }
+            throw new IllegalStateException("A local control remained after immediate evaluation: "
+                    + control.getControlCode());
+        }
+    }
+
+    private boolean evaluateLocalControls(LoanApplicationEntity application) {
+        List<ApplicationControlEntity> localControls = application.getControls().stream()
+                .filter(control -> control.getSubjectType() == ControlSubjectType.APPLICANT)
+                .filter(control -> !control.requiresInquiry())
+                .filter(control -> control.getStatus() == ApplicationControlStatus.WAITING_PRIORITY
+                        || control.getStatus() == ApplicationControlStatus.BLOCKED_BY_PAYMENT)
+                .sorted(Comparator.comparingInt(ApplicationControlEntity::getPriority))
+                .toList();
+        for (ApplicationControlEntity control : localControls) {
             apply(application, control, localFacts(application), Map.of());
             if (control.getStatus() == ApplicationControlStatus.FAILED) {
                 reject(application, control.getErrorMessage());
-                return;
+                return false;
             }
         }
+        return true;
     }
 
     public void complete(
@@ -162,7 +184,7 @@ public class OriginationControlOrchestrator {
     }
 
     private static AssessmentModels.Facts localFacts(LoanApplicationEntity application) {
-        return new AssessmentModels.Facts(application.getBirthDate(), null, null);
+        return new AssessmentModels.Facts(application.getBirthDate(), null, null, null);
     }
 
     private static AssessmentModels.Facts externalFacts(
@@ -171,13 +193,17 @@ public class OriginationControlOrchestrator {
             Map<String, String> facts
     ) {
         Integer creditRank = null;
-        Boolean hasBadCheque = null;
+        Integer badChequeCount = null;
+        java.math.BigDecimal badChequeAmount = null;
         if (control.getControlType() == PlanControlType.MINIMUM_CREDIT_RANK) {
             creditRank = Integer.valueOf(requiredFact(facts, "rank"));
-        } else if (control.getControlType() == PlanControlType.NO_BAD_CHEQUE) {
-            hasBadCheque = Integer.parseInt(requiredFact(facts, "unsettledCount")) > 0;
+        } else if (control.getControlType() == PlanControlType.NO_BAD_CHEQUE
+                || control.getControlType() == PlanControlType.MAXIMUM_BAD_CHEQUE_COUNT) {
+            badChequeCount = Integer.valueOf(requiredFact(facts, "unsettledCount"));
+        } else if (control.getControlType() == PlanControlType.MAXIMUM_BAD_CHEQUE_AMOUNT) {
+            badChequeAmount = new java.math.BigDecimal(requiredFact(facts, "totalAmount"));
         }
-        return new AssessmentModels.Facts(application.getBirthDate(), creditRank, hasBadCheque);
+        return new AssessmentModels.Facts(application.getBirthDate(), creditRank, badChequeCount, badChequeAmount);
     }
 
     private String writeFacts(Map<String, String> facts) {

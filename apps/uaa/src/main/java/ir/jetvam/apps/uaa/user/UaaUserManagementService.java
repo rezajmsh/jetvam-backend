@@ -3,6 +3,8 @@ package ir.jetvam.apps.uaa.user;
 import ir.jetvam.modules.identity.model.UserAccountStatus;
 import ir.jetvam.modules.identity.service.CreateAccountForPartyCommand;
 import ir.jetvam.modules.identity.service.CreateUserCommand;
+import ir.jetvam.modules.identity.service.IndividualPartyView;
+import ir.jetvam.modules.identity.service.UpdateIndividualPartyCommand;
 import ir.jetvam.modules.identity.service.UserPage;
 import ir.jetvam.modules.identity.service.UserSearchQuery;
 import ir.jetvam.modules.identity.service.UserView;
@@ -25,6 +27,10 @@ public interface UaaUserManagementService {
     UserPage search(UserSearchQuery query);
 
     UserView get(UUID userId);
+
+    IndividualPartyView getParty(UUID partyId);
+
+    IndividualPartyView updateParty(UUID actorUserId, UUID partyId, UpdateIndividualPartyCommand command);
 
     UserView changeStatus(UUID actorUserId, UUID userId, UserAccountStatus status);
 

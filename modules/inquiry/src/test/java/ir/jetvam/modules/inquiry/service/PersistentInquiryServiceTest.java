@@ -1,7 +1,7 @@
 package ir.jetvam.modules.inquiry.service;
 
 import tools.jackson.databind.ObjectMapper;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.integration.routing.ProviderExecution;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +38,7 @@ class PersistentInquiryServiceTest {
         );
         UUID requestId = UUID.randomUUID();
         when(executionStore.prepare(
-                org.mockito.ArgumentMatchers.eq(InquiryCapabilities.CREDIT_RATING),
+                org.mockito.ArgumentMatchers.eq(InquiryType.CREDIT_RATING),
                 org.mockito.ArgumentMatchers.eq("0067749828"),
                 org.mockito.ArgumentMatchers.eq("0067749828"),
                 anyString()
@@ -63,7 +63,7 @@ class PersistentInquiryServiceTest {
         UUID requestId = UUID.randomUUID();
         Duration validity = Duration.ofDays(1);
         when(executionStore.prepare(
-                org.mockito.ArgumentMatchers.eq(InquiryCapabilities.BAD_CHEQUE),
+                org.mockito.ArgumentMatchers.eq(InquiryType.BAD_CHEQUE),
                 org.mockito.ArgumentMatchers.eq("0067749828"),
                 org.mockito.ArgumentMatchers.eq("0067749828"),
                 anyString()

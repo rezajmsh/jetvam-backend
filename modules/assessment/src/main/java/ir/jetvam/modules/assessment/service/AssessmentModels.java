@@ -44,7 +44,12 @@ public final class AssessmentModels {
     ) {
     }
 
-    public record Facts(LocalDate birthDate, Integer creditRank, Boolean hasBadCheque) {
+    public record Facts(
+            LocalDate birthDate,
+            Integer creditRank,
+            Integer badChequeCount,
+            BigDecimal badChequeAmount
+    ) {
     }
 
     public record PolicyResult(boolean eligible, List<ControlResult> controls) {

@@ -3,6 +3,7 @@ package ir.jetvam.apps.services.inquiry;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import ir.jetvam.modules.inquiry.service.InquiryDefinitionService;
+import ir.jetvam.common.inquiry.InquiryType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
@@ -48,15 +49,17 @@ public class InquiryDefinitionController {
             @Valid @RequestBody UpdateInquiryDefinitionRequest request
     ) {
         return definitionService.update(
-                inquiryCode,
+                InquiryType.fromCode(inquiryCode),
                 Duration.ofSeconds(request.validitySeconds()),
-                request.enabled()
+                request.enabled(),
+                request.requiresSubjectOtp()
         );
     }
 
     public record UpdateInquiryDefinitionRequest(
             @NotNull @PositiveOrZero Long validitySeconds,
-            @NotNull Boolean enabled
+            @NotNull Boolean enabled,
+            @NotNull Boolean requiresSubjectOtp
     ) {
     }
 }

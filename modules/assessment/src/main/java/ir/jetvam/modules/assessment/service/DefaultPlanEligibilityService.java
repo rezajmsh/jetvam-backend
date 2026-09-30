@@ -8,6 +8,7 @@ import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.inquiry.service.InquiryService;
 import ir.jetvam.modules.product.service.ProductCatalogService;
 import ir.jetvam.modules.product.service.ProductViews;
+import ir.jetvam.modules.product.model.ControlSubjectType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -48,6 +49,7 @@ public class DefaultPlanEligibilityService implements PlanEligibilityService {
         InquiryResults.BadCheque badCheque = null;
 
         for (ProductViews.Control control : plan.controls().stream()
+                .filter(control -> control.subjectType() == ControlSubjectType.APPLICANT)
                 .sorted(Comparator.comparingInt(ProductViews.Control::priority)).toList()) {
             switch (control.type()) {
                 case AGE_RANGE -> outcomes.add(evaluateAge(control, birthDate, today));
@@ -62,6 +64,22 @@ public class DefaultPlanEligibilityService implements PlanEligibilityService {
                         badCheque = inquiryService.findBadCheques(new InquiryRequests.BadCheque(nationalCode));
                     }
                     outcomes.add(evaluateBadCheque(control, badCheque));
+                }
+                case MAXIMUM_BAD_CHEQUE_COUNT -> {
+                    if (badCheque == null) {
+                        badCheque = inquiryService.findBadCheques(new InquiryRequests.BadCheque(nationalCode));
+                    }
+                    outcomes.add(outcome(control,
+                            BigDecimal.valueOf(badCheque.unsettledCount()).compareTo(control.maximumValue()) <= 0,
+                            Integer.toString(badCheque.unsettledCount()), badCheque.trackingId()));
+                }
+                case MAXIMUM_BAD_CHEQUE_AMOUNT -> {
+                    if (badCheque == null) {
+                        badCheque = inquiryService.findBadCheques(new InquiryRequests.BadCheque(nationalCode));
+                    }
+                    outcomes.add(outcome(control,
+                            badCheque.totalAmount().compareTo(control.maximumValue()) <= 0,
+                            badCheque.totalAmount().toPlainString(), badCheque.trackingId()));
                 }
             }
             if (!outcomes.getLast().passed()) {

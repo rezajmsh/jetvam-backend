@@ -1,6 +1,6 @@
 package ir.jetvam.modules.inquiry.service;
 
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.integration.routing.ProviderRouter;
 import ir.jetvam.modules.integration.routing.ProviderExecution;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ class RoutingInquiryServiceTest {
         );
         InquiryRequests.CreditRating normalized = new InquiryRequests.CreditRating("0067749828");
         when(router.executeWithProvider(
-                InquiryCapabilities.CREDIT_RATING, normalized, InquiryResults.CreditRating.class, true
+                InquiryType.CREDIT_RATING.code(), normalized, InquiryResults.CreditRating.class, true
         )).thenReturn(new ProviderExecution<>("BUREAU", expected));
         RoutingInquiryService service = new RoutingInquiryService(router);
 
@@ -37,7 +37,7 @@ class RoutingInquiryServiceTest {
 
         assertThat(result.result()).isEqualTo(expected);
         verify(router).executeWithProvider(
-                InquiryCapabilities.CREDIT_RATING, normalized, InquiryResults.CreditRating.class, true
+                InquiryType.CREDIT_RATING.code(), normalized, InquiryResults.CreditRating.class, true
         );
     }
 
@@ -47,13 +47,13 @@ class RoutingInquiryServiceTest {
         InquiryRequests.BadCheque request = new InquiryRequests.BadCheque("0067749828");
         InquiryResults.BadCheque expected = new InquiryResults.BadCheque(0, BigDecimal.ZERO, "cheque-1");
         when(router.executeWithProvider(
-                InquiryCapabilities.BAD_CHEQUE, request, InquiryResults.BadCheque.class, true
+                InquiryType.BAD_CHEQUE.code(), request, InquiryResults.BadCheque.class, true
         )).thenReturn(new ProviderExecution<>("BUREAU", expected));
         RoutingInquiryService service = new RoutingInquiryService(router);
 
         assertThat(service.findBadCheques(request).result()).isEqualTo(expected);
         verify(router).executeWithProvider(
-                InquiryCapabilities.BAD_CHEQUE, request, InquiryResults.BadCheque.class, true
+                InquiryType.BAD_CHEQUE.code(), request, InquiryResults.BadCheque.class, true
         );
     }
 }

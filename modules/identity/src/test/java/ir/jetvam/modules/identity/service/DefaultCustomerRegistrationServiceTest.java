@@ -1,7 +1,9 @@
 package ir.jetvam.modules.identity.service;
 
 import ir.jetvam.modules.identity.IdentityOtpPurposes;
-import ir.jetvam.modules.identity.model.CustomerOnboardingStatus;
+import ir.jetvam.modules.identity.model.IdentityVerificationStatus;
+import ir.jetvam.modules.identity.model.MobileVerificationStatus;
+import ir.jetvam.modules.identity.model.ShahkarStatus;
 import ir.jetvam.modules.inquiry.service.InquiryRequests;
 import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.inquiry.service.InquiryService;
@@ -39,7 +41,9 @@ class DefaultCustomerRegistrationServiceTest {
         CustomerRegistrationResult expected = new CustomerRegistrationResult(
                 userId,
                 partyId,
-                CustomerOnboardingStatus.IDENTITY_VERIFIED
+                MobileVerificationStatus.VERIFIED,
+                ShahkarStatus.MATCHED,
+                IdentityVerificationStatus.VERIFIED
         );
         VerifyCustomerRegistrationCommand command = new VerifyCustomerRegistrationCommand(challengeId, "123456");
 

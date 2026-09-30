@@ -8,11 +8,9 @@ import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.modules.identity.IdentityOtpPurposes;
 import ir.jetvam.modules.identity.IdentityRoles;
 import ir.jetvam.modules.identity.model.AuthenticationMethod;
-import ir.jetvam.modules.identity.persistence.CustomerProfileEntity;
 import ir.jetvam.modules.identity.persistence.IndividualPartyEntity;
 import ir.jetvam.modules.identity.persistence.RoleEntity;
 import ir.jetvam.modules.identity.persistence.UserAccountEntity;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.RoleRepository;
 import ir.jetvam.modules.identity.repository.UserAccountRepository;
@@ -41,7 +39,6 @@ public class CustomerRegistrationTransactionService {
     private final IndividualPartyRepository individualRepository;
     private final UserAccountRepository userRepository;
     private final RoleRepository roleRepository;
-    private final CustomerProfileRepository customerProfileRepository;
     private final TimeProvider timeProvider;
 
     @Transactional(readOnly = true)
@@ -76,12 +73,6 @@ public class CustomerRegistrationTransactionService {
         individual.markShahkarMatched(timeProvider.now(), ownership.trackingId());
         individual.markIdentityVerified(timeProvider.now());
 
-        CustomerProfileEntity profile = customerProfileRepository.findByPartyId(individual.getId())
-                .orElseGet(() -> new CustomerProfileEntity(individual));
-        profile.markMobileVerified();
-        profile.markIdentityVerified();
-        customerProfileRepository.save(profile);
-
         RoleEntity customerRole = roleRepository.findByCode(IdentityRoles.CUSTOMER)
                 .orElseThrow(() -> new ResourceNotFoundException("role", IdentityRoles.CUSTOMER));
         UserAccountEntity account = userRepository.save(new UserAccountEntity(
@@ -95,7 +86,9 @@ public class CustomerRegistrationTransactionService {
         return CustomerRegistrationCompletion.accepted(new CustomerRegistrationResult(
                 account.getId(),
                 individual.getId(),
-                profile.getOnboardingStatus()
+                individual.getMobileVerificationStatus(),
+                individual.getShahkarStatus(),
+                individual.getIdentityVerificationStatus()
         ));
     }
 

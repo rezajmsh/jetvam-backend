@@ -7,6 +7,7 @@ import ir.jetvam.modules.identity.model.UserAccountStatus;
 import ir.jetvam.modules.identity.service.UserAccountService;
 import ir.jetvam.modules.identity.service.UserCredentialService;
 import ir.jetvam.modules.identity.service.UserView;
+import ir.jetvam.modules.identity.service.IndividualPartyManagementService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +35,7 @@ class DefaultUaaUserManagementServiceTest {
 
     private UserAccountService userAccountService;
     private UserCredentialService credentialService;
+    private IndividualPartyManagementService partyManagementService;
     private AuthorizationSessionService sessionService;
     private AuditLogger auditLogger;
     private DefaultUaaUserManagementService service;
@@ -42,11 +44,13 @@ class DefaultUaaUserManagementServiceTest {
     void setUp() {
         userAccountService = mock(UserAccountService.class);
         credentialService = mock(UserCredentialService.class);
+        partyManagementService = mock(IndividualPartyManagementService.class);
         sessionService = mock(AuthorizationSessionService.class);
         auditLogger = mock(AuditLogger.class);
         service = new DefaultUaaUserManagementService(
                 userAccountService,
                 credentialService,
+                partyManagementService,
                 sessionService,
                 auditLogger
         );

@@ -12,12 +12,10 @@ import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.modules.identity.IdentityRoles;
 import ir.jetvam.modules.identity.IdentityErrorCode;
 import ir.jetvam.modules.identity.model.UserAccountStatus;
-import ir.jetvam.modules.identity.persistence.CustomerProfileEntity;
 import ir.jetvam.modules.identity.persistence.IndividualPartyEntity;
 import ir.jetvam.modules.identity.persistence.PartyEntity;
 import ir.jetvam.modules.identity.persistence.RoleEntity;
 import ir.jetvam.modules.identity.persistence.UserAccountEntity;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import ir.jetvam.modules.identity.repository.PartyRepository;
 import ir.jetvam.modules.identity.repository.RoleRepository;
@@ -53,7 +51,6 @@ public class DefaultUserAccountService implements UserAccountService {
     private final IndividualPartyRepository individualRepository;
     private final UserAccountRepository userRepository;
     private final RoleRepository roleRepository;
-    private final CustomerProfileRepository customerProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final PasswordPolicy passwordPolicy;
     private final TimeProvider timeProvider;
@@ -96,9 +93,6 @@ public class DefaultUserAccountService implements UserAccountService {
                 command.categories(),
                 roles
         ));
-        if (command.categories().contains(UserCategory.CUSTOMER)) {
-            customerProfileRepository.save(new CustomerProfileEntity(individual));
-        }
         return toView(account);
     }
 

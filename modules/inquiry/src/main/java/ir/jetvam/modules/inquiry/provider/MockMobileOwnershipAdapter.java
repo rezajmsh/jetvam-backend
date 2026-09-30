@@ -1,7 +1,7 @@
 package ir.jetvam.modules.inquiry.provider;
 
 import ir.jetvam.common.validation.Preconditions;
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.service.InquiryRequests;
 import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.integration.routing.ExternalProviderAdapter;
@@ -26,7 +26,7 @@ public final class MockMobileOwnershipAdapter implements ExternalProviderAdapter
 
     @Override
     public String capabilityCode() {
-        return InquiryCapabilities.MOBILE_OWNERSHIP;
+        return InquiryType.MOBILE_OWNERSHIP.code();
     }
 
     @Override

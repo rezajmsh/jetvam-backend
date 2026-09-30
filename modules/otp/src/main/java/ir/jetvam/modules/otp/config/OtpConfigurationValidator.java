@@ -4,6 +4,7 @@ import ir.jetvam.common.validation.Preconditions;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -18,6 +19,7 @@ import java.util.Set;
  */
 @Slf4j
 @Component
+@ConditionalOnProperty(prefix = "jetvam.otp", name = "validation-enabled", matchIfMissing = true)
 @RequiredArgsConstructor
 public class OtpConfigurationValidator implements InitializingBean {
 

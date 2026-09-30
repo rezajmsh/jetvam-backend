@@ -2,6 +2,7 @@ package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.common.exception.ConfigurationException;
 import ir.jetvam.common.exception.ResourceNotFoundException;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.modules.inquiry.model.InquiryDefinitionEntity;
 import ir.jetvam.modules.inquiry.repository.InquiryDefinitionRepository;
@@ -26,7 +27,7 @@ public class InquiryDefinitionService {
     private final InquiryDefinitionRepository repository;
 
     @Transactional(readOnly = true)
-    public Duration requireEnabledValidity(String inquiryCode) {
+    public Duration requireEnabledValidity(InquiryType inquiryCode) {
         InquiryDefinitionEntity definition = find(inquiryCode);
         if (!definition.isEnabled()) {
             throw new ConfigurationException("Inquiry capability is disabled: " + inquiryCode);
@@ -35,7 +36,7 @@ public class InquiryDefinitionService {
     }
 
     @Transactional(readOnly = true)
-    public Duration validity(String inquiryCode) {
+    public Duration validity(InquiryType inquiryCode) {
         return find(inquiryCode).validity();
     }
 
@@ -48,28 +49,40 @@ public class InquiryDefinitionService {
     }
 
     @Transactional
-    public DefinitionView update(String inquiryCode, Duration validity, boolean enabled) {
+    public DefinitionView update(
+            InquiryType inquiryCode,
+            Duration validity,
+            boolean enabled,
+            boolean requiresSubjectOtp
+    ) {
         Preconditions.requireNonNull(validity, "validity");
         InquiryDefinitionEntity definition = find(inquiryCode);
-        definition.update(validity, enabled);
+        definition.update(validity, enabled, requiresSubjectOtp);
         return view(definition);
     }
 
-    private InquiryDefinitionEntity find(String inquiryCode) {
-        String code = Preconditions.requireText(inquiryCode, "inquiryCode").strip();
-        return repository.findByInquiryCode(code)
-                .orElseThrow(() -> new ResourceNotFoundException("inquiryDefinition", code));
+    private InquiryDefinitionEntity find(InquiryType inquiryCode) {
+        InquiryType type = Preconditions.requireNonNull(inquiryCode, "inquiryCode");
+        return repository.findByInquiryCode(type)
+                .orElseThrow(() -> new ResourceNotFoundException("inquiryDefinition", type.code()));
     }
 
     private static DefinitionView view(InquiryDefinitionEntity definition) {
         return new DefinitionView(
-                definition.getInquiryCode(),
+                definition.getInquiryCode().code(),
                 definition.getTitle(),
                 definition.getValiditySeconds(),
-                definition.isEnabled()
+                definition.isEnabled(),
+                definition.isRequiresSubjectOtp()
         );
     }
 
-    public record DefinitionView(String inquiryCode, String title, long validitySeconds, boolean enabled) {
+    public record DefinitionView(
+            String inquiryCode,
+            String title,
+            long validitySeconds,
+            boolean enabled,
+            boolean requiresSubjectOtp
+    ) {
     }
 }

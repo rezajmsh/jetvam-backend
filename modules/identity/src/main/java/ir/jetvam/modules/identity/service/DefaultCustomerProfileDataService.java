@@ -1,21 +1,18 @@
 package ir.jetvam.modules.identity.service;
 
-import ir.jetvam.common.exception.OperationNotAllowedException;
 import ir.jetvam.common.exception.ResourceNotFoundException;
 import ir.jetvam.common.validation.Preconditions;
-import ir.jetvam.modules.identity.model.CustomerOnboardingStatus;
-import ir.jetvam.modules.identity.persistence.CustomerProfileEntity;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
+import ir.jetvam.modules.identity.persistence.IndividualPartyEntity;
+import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 /**
- * Persists customer profile information in typed relational fields and exposes reusable revisions.
- * Access is scoped by the supplied party identifier so callers can enforce customer ownership.
+ * Exposes and updates canonical individual-party identity and personal information.
+ * Employment and document data intentionally belong to individual loan applications.
  *
  * @author reza jamshidi
  * @since 9/25/2026
@@ -24,12 +21,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DefaultCustomerProfileDataService implements CustomerProfileDataService {
 
-    private final CustomerProfileRepository profileRepository;
+    private final IndividualPartyRepository individualPartyRepository;
 
     @Override
     @Transactional(readOnly = true)
     public CustomerProfileModels.ProfileView get(UUID customerPartyId) {
-        return toView(findCompleted(customerPartyId));
+        return toView(findIndividual(customerPartyId));
     }
 
     @Override
@@ -39,53 +36,33 @@ public class DefaultCustomerProfileDataService implements CustomerProfileDataSer
             CustomerProfileModels.UpdatePersonalInformation command
     ) {
         Preconditions.requireNonNull(command, "command");
-        CustomerProfileEntity profile = findCompleted(customerPartyId);
-        profile.updatePersonalInformation(
+        IndividualPartyEntity individual = findIndividual(customerPartyId);
+        individual.updatePersonalInformation(
                 command.bankCardNumber(), command.landline(), command.postalCode(), command.address()
         );
-        return toView(profile);
+        return toView(individual);
     }
 
-    @Override
-    @Transactional
-    public CustomerProfileModels.ProfileView updateEmploymentInformation(
-            UUID customerPartyId,
-            CustomerProfileModels.UpdateEmploymentInformation command
-    ) {
-        Preconditions.requireNonNull(command, "command");
-        CustomerProfileEntity profile = findCompleted(customerPartyId);
-        profile.updateEmploymentInformation(
-                command.educationCode(), command.employmentCode(), command.monthlyIncome(), command.documentIds()
+    private IndividualPartyEntity findIndividual(UUID customerPartyId) {
+        return individualPartyRepository.findById(customerPartyId)
+                .orElseThrow(() -> new ResourceNotFoundException("individualParty", customerPartyId));
+    }
+
+    private static CustomerProfileModels.ProfileView toView(IndividualPartyEntity individual) {
+        CustomerProfileModels.IdentityInformation identity = new CustomerProfileModels.IdentityInformation(
+                individual.getNationalCode(), individual.getFirstName(),
+                individual.getLastName(), individual.getBirthDate()
         );
-        return toView(profile);
-    }
-
-    private CustomerProfileEntity findCompleted(UUID customerPartyId) {
-        UUID requiredPartyId = Preconditions.requireNonNull(customerPartyId, "customerPartyId");
-        CustomerProfileEntity profile = profileRepository.findByPartyId(requiredPartyId)
-                .orElseThrow(() -> new ResourceNotFoundException("customerProfile", requiredPartyId));
-        if (profile.getOnboardingStatus() != CustomerOnboardingStatus.COMPLETED) {
-            throw new OperationNotAllowedException(
-                    "manage-customer-profile",
-                    "Customer identity profile must be completed first"
-            );
-        }
-        return profile;
-    }
-
-    private static CustomerProfileModels.ProfileView toView(CustomerProfileEntity profile) {
-        CustomerProfileModels.PersonalInformation personal = profile.hasPersonalInformation()
+        CustomerProfileModels.PersonalInformation personal = individual.hasCompletePersonalInformation()
                 ? new CustomerProfileModels.PersonalInformation(
-                        profile.getBankCardNumber(), profile.getLandline(), profile.getPostalCode(),
-                        profile.getAddress(), profile.getPersonalInformationRevision()
+                        individual.getBankCardNumber(), individual.getLandline(), individual.getPostalCode(),
+                        individual.getAddress()
                 )
                 : null;
-        CustomerProfileModels.EmploymentInformation employment = profile.hasEmploymentInformation()
-                ? new CustomerProfileModels.EmploymentInformation(
-                        profile.getEducationCode(), profile.getEmploymentCode(), profile.getMonthlyIncome(),
-                        List.copyOf(profile.getEmploymentDocumentIds()), profile.getEmploymentInformationRevision()
-                )
-                : null;
-        return new CustomerProfileModels.ProfileView(profile.getId(), personal, employment);
+        return new CustomerProfileModels.ProfileView(
+                individual.getId(), individual.getMobileVerificationStatus(), individual.getShahkarStatus(),
+                individual.getIdentityVerificationStatus(), individual.hasCompleteIdentityInformation(),
+                individual.hasCompletePersonalInformation(), individual.isReadyForApplication(), identity, personal
+        );
     }
 }

@@ -6,14 +6,15 @@ import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.apps.jobs.infrastructure.handler.JobHandlerRegistry;
 import ir.jetvam.apps.jobs.infrastructure.persistence.JobDefinitionEntity;
 import ir.jetvam.apps.jobs.infrastructure.persistence.JobExecutionEntity;
-import ir.jetvam.apps.jobs.infrastructure.quartz.JobScheduleSynchronizer;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobDefinitionRepository;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobExecutionRepository;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobExecutionStatistics;
+import ir.jetvam.apps.jobs.infrastructure.scheduler.JobLauncher;
+import ir.jetvam.apps.jobs.infrastructure.scheduler.JobScheduleRegistry;
 import lombok.RequiredArgsConstructor;
-import org.quartz.CronExpression;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.support.CronExpression;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZoneId;
@@ -34,7 +35,8 @@ public class DefaultJobManagementService implements JobManagementService {
     private final JobExecutionPersistenceService executionPersistenceService;
     private final JobExecutionCoordinator executionCoordinator;
     private final JobHandlerRegistry handlerRegistry;
-    private final JobScheduleSynchronizer scheduleSynchronizer;
+    private final JobScheduleRegistry scheduleRegistry;
+    private final JobLauncher jobLauncher;
 
     @Override
     @Transactional
@@ -60,7 +62,7 @@ public class DefaultJobManagementService implements JobManagementService {
                 values.timeZone(),
                 command.enabled()
         ));
-        scheduleSynchronizer.synchronize(definition);
+        scheduleRegistry.synchronizeAfterCommit(definition.getId());
         return toView(definition);
     }
 
@@ -86,7 +88,7 @@ public class DefaultJobManagementService implements JobManagementService {
                 command.enabled()
         );
         definitionRepository.flush();
-        scheduleSynchronizer.synchronize(definition);
+        scheduleRegistry.synchronizeAfterCommit(definition.getId());
         return toView(definition);
     }
 
@@ -96,7 +98,7 @@ public class DefaultJobManagementService implements JobManagementService {
         JobDefinitionEntity definition = requireDefinition(id);
         definition.setEnabled(enabled);
         definitionRepository.flush();
-        scheduleSynchronizer.synchronize(definition);
+        scheduleRegistry.synchronizeAfterCommit(definition.getId());
         return toView(definition);
     }
 
@@ -149,7 +151,7 @@ public class DefaultJobManagementService implements JobManagementService {
         handlerRegistry.require(definition.getHandlerKey());
         JobExecutionEntity execution = executionPersistenceService.queueManual(definitionId, requestedBy);
         try {
-            scheduleSynchronizer.triggerManually(definition, execution.getId(), requestedBy);
+            jobLauncher.launchManual(definition.getId(), execution.getId(), requestedBy);
         } catch (RuntimeException exception) {
             executionCoordinator.failQueued(execution.getId(), exception);
             throw exception;

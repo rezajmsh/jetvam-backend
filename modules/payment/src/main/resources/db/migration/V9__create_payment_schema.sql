@@ -24,6 +24,27 @@ CREATE INDEX ix_payment_fee_reference
 CREATE INDEX ix_payment_fee_activation
     ON payment_fee_obligation(reference_type, reference_id, activation_key, status);
 
+CREATE TABLE payment_gateway (
+    id UUID PRIMARY KEY,
+    version BIGINT NOT NULL DEFAULT 0,
+    gateway_code VARCHAR(100) NOT NULL UNIQUE,
+    title VARCHAR(200) NOT NULL,
+    adapter_code VARCHAR(100) NOT NULL,
+    configuration_json TEXT NOT NULL,
+    active BOOLEAN NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE UNIQUE INDEX uk_payment_single_active_gateway ON payment_gateway(active) WHERE active = true;
+
+INSERT INTO payment_gateway (
+    id, version, gateway_code, title, adapter_code, configuration_json, active, created_at, updated_at
+) VALUES (
+    '20000000-0000-0000-0000-000000000001', 0, 'MOCK', 'درگاه آزمایشی جت‌وام', 'MOCK', '{}', true,
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+);
+
 CREATE TABLE payment_attempt (
     id UUID PRIMARY KEY,
     version BIGINT NOT NULL DEFAULT 0,
@@ -31,10 +52,16 @@ CREATE TABLE payment_attempt (
     idempotency_key VARCHAR(100) NOT NULL,
     status VARCHAR(30) NOT NULL,
     provider_reference VARCHAR(150),
+    gateway_code VARCHAR(100),
+    checkout_token_hash VARCHAR(64),
+    return_url VARCHAR(1000),
+    redirect_url VARCHAR(1500),
     completed_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     CONSTRAINT uk_payment_attempt_idempotency UNIQUE (idempotency_key),
     CONSTRAINT fk_payment_attempt_fee FOREIGN KEY (fee_obligation_id)
-        REFERENCES payment_fee_obligation(id)
+        REFERENCES payment_fee_obligation(id),
+    CONSTRAINT fk_payment_attempt_gateway FOREIGN KEY (gateway_code)
+        REFERENCES payment_gateway(gateway_code)
 );

@@ -6,6 +6,8 @@ import ir.jetvam.common.security.UserCategory;
 import ir.jetvam.infra.security.CurrentUser;
 import ir.jetvam.modules.identity.service.CreateUserCommand;
 import ir.jetvam.modules.identity.service.CreateAccountForPartyCommand;
+import ir.jetvam.modules.identity.service.IndividualPartyView;
+import ir.jetvam.modules.identity.service.UpdateIndividualPartyCommand;
 import ir.jetvam.modules.identity.model.UserAccountStatus;
 import ir.jetvam.modules.identity.service.UserPage;
 import ir.jetvam.modules.identity.service.UserSearchQuery;
@@ -100,6 +102,30 @@ public class UserManagementController {
     @Operation(summary = "Get a user", description = "Returns an account by identifier for authorized identity operators.")
     public UserView get(@PathVariable UUID id) {
         return userManagementService.get(id);
+    }
+
+    @GetMapping("/parties/{partyId}")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('identity:user:read')")
+    @Operation(summary = "Get an individual party", description = "Returns identity data shared by every account linked to the party.")
+    public IndividualPartyView getParty(@PathVariable UUID partyId) {
+        return userManagementService.getParty(partyId);
+    }
+
+    @PutMapping("/parties/{partyId}")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'UAA_ADMIN') and hasAuthority('identity:user:write')")
+    @Operation(summary = "Update an individual party", description = "Corrects canonical identity shared by all accounts linked to the party.")
+    public IndividualPartyView updateParty(
+            @PathVariable UUID partyId,
+            @Valid @RequestBody UpdateIndividualPartyRequest request
+    ) {
+        return userManagementService.updateParty(
+                CurrentUser.userId(),
+                partyId,
+                new UpdateIndividualPartyCommand(
+                        request.nationalCode(), request.firstName(), request.lastName(),
+                        request.birthDate(), request.mobile()
+                )
+        );
     }
 
     @PatchMapping("/{id}/status")

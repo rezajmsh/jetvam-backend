@@ -1,7 +1,10 @@
 package ir.jetvam.modules.identity.service;
 
-import java.math.BigDecimal;
-import java.util.List;
+import ir.jetvam.modules.identity.model.IdentityVerificationStatus;
+import ir.jetvam.modules.identity.model.MobileVerificationStatus;
+import ir.jetvam.modules.identity.model.ShahkarStatus;
+
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
@@ -24,42 +27,32 @@ public final class CustomerProfileModels {
     ) {
     }
 
-    public record UpdateEmploymentInformation(
-            String educationCode,
-            String employmentCode,
-            BigDecimal monthlyIncome,
-            List<UUID> documentIds
-    ) {
-        public UpdateEmploymentInformation {
-            documentIds = documentIds == null ? List.of() : List.copyOf(documentIds);
-        }
-    }
-
     public record PersonalInformation(
             String bankCardNumber,
             String landline,
             String postalCode,
-            String address,
-            long revision
+            String address
     ) {
     }
 
-    public record EmploymentInformation(
-            String educationCode,
-            String employmentCode,
-            BigDecimal monthlyIncome,
-            List<UUID> documentIds,
-            long revision
+    public record IdentityInformation(
+            String nationalCode,
+            String firstName,
+            String lastName,
+            LocalDate birthDate
     ) {
-        public EmploymentInformation {
-            documentIds = List.copyOf(documentIds);
-        }
     }
 
     public record ProfileView(
             UUID customerPartyId,
-            PersonalInformation personalInformation,
-            EmploymentInformation employmentInformation
+            MobileVerificationStatus mobileVerificationStatus,
+            ShahkarStatus shahkarStatus,
+            IdentityVerificationStatus identityVerificationStatus,
+            boolean identityInformationComplete,
+            boolean personalInformationComplete,
+            boolean readyForApplication,
+            IdentityInformation identityInformation,
+            PersonalInformation personalInformation
     ) {
     }
 }

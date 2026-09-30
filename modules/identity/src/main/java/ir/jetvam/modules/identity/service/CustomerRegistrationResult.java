@@ -1,6 +1,8 @@
 package ir.jetvam.modules.identity.service;
 
-import ir.jetvam.modules.identity.model.CustomerOnboardingStatus;
+import ir.jetvam.modules.identity.model.IdentityVerificationStatus;
+import ir.jetvam.modules.identity.model.MobileVerificationStatus;
+import ir.jetvam.modules.identity.model.ShahkarStatus;
 
 import java.util.UUID;
 
@@ -14,6 +16,8 @@ import java.util.UUID;
 public record CustomerRegistrationResult(
         UUID userId,
         UUID partyId,
-        CustomerOnboardingStatus onboardingStatus
+        MobileVerificationStatus mobileVerificationStatus,
+        ShahkarStatus shahkarStatus,
+        IdentityVerificationStatus identityVerificationStatus
 ) {
 }

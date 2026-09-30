@@ -1,5 +1,6 @@
 package ir.jetvam.modules.inquiry.model;
 
+import ir.jetvam.common.inquiry.InquiryType;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -53,7 +54,7 @@ class InquiryRequestEntityTest {
 
     private static InquiryRequestEntity request() {
         return new InquiryRequestEntity(
-                "CREDIT_RATING_INQUIRY",
+                InquiryType.CREDIT_RATING,
                 "0013546789",
                 "0013546789",
                 "{\"nationalCode\":\"0013546789\"}",

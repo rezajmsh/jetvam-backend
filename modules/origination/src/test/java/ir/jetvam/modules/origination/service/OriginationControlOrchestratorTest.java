@@ -1,6 +1,7 @@
 package ir.jetvam.modules.origination.service;
 
 import tools.jackson.databind.ObjectMapper;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.common.time.ClockTimeProvider;
 import ir.jetvam.modules.assessment.service.DefaultEligibilityPolicyEvaluator;
 import ir.jetvam.modules.origination.model.ApplicationControlEntity;
@@ -9,6 +10,7 @@ import ir.jetvam.modules.origination.model.ApplicationStatus;
 import ir.jetvam.modules.origination.model.LoanApplicationEntity;
 import ir.jetvam.modules.payment.service.PaymentService;
 import ir.jetvam.modules.product.model.PlanControlType;
+import ir.jetvam.modules.product.model.ControlSubjectType;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -79,6 +81,24 @@ class OriginationControlOrchestratorTest {
     }
 
     @Test
+    void evaluatesLocalControlsBeforeAHigherPriorityInquiryIsDispatched() {
+        OriginationControlInquiryService inquiries = mock(OriginationControlInquiryService.class);
+        OriginationControlOrchestrator orchestrator = orchestrator(inquiries);
+        LoanApplicationEntity application = application(LocalDate.of(1990, 1, 1));
+        ApplicationControlEntity credit = credit(application, 1);
+        ApplicationControlEntity age = age(application, 2);
+        application.addControl(credit);
+        application.addControl(age);
+
+        orchestrator.advance(application);
+
+        assertThat(age.getStatus()).isEqualTo(ApplicationControlStatus.PASSED);
+        assertThat(age.getEvaluatedAt()).isEqualTo(NOW);
+        assertThat(credit.getStatus()).isEqualTo(ApplicationControlStatus.PENDING_INQUIRY);
+        verify(inquiries).submit(application, credit);
+    }
+
+    @Test
     void callbackPassReleasesOnlyTheNextPriority() {
         OriginationControlInquiryService inquiries = mock(OriginationControlInquiryService.class);
         OriginationControlOrchestrator orchestrator = orchestrator(inquiries);
@@ -104,9 +124,10 @@ class OriginationControlOrchestratorTest {
         LoanApplicationEntity application = application(LocalDate.of(1990, 1, 1));
         ApplicationControlEntity first = credit(application, 1);
         ApplicationControlEntity second = new ApplicationControlEntity(
-                application, "CREDIT_STRICTER", "Credit stricter", 2,
+                application, ControlSubjectType.APPLICANT, application.getCustomerPartyId(),
+                "CREDIT_STRICTER", "Credit stricter", 2,
                 PlanControlType.MINIMUM_CREDIT_RANK, BigDecimal.valueOf(5), null,
-                "CREDIT_RATING_INQUIRY", "Credit rank is too low"
+                InquiryType.CREDIT_RATING, "Credit rank is too low"
         );
         application.addControl(first);
         application.addControl(second);
@@ -184,7 +205,7 @@ class OriginationControlOrchestratorTest {
         LoanApplicationEntity application = new LoanApplicationEntity(
                 UUID.randomUUID(), "0013546789", birthDate, UUID.randomUUID(),
                 "PLAN", "Plan", BigDecimal.valueOf(100_000_000), 12, BigDecimal.valueOf(23),
-                false, false, false, null, null, ApplicationStatus.WAITING_CONTROLS
+                false, ApplicationStatus.WAITING_CONTROLS
         );
         ReflectionTestUtils.setField(application, "id", UUID.randomUUID());
         return application;
@@ -192,22 +213,25 @@ class OriginationControlOrchestratorTest {
 
     private static ApplicationControlEntity age(LoanApplicationEntity application, int priority) {
         return new ApplicationControlEntity(
-                application, "AGE", "Age", priority, PlanControlType.AGE_RANGE,
+                application, ControlSubjectType.APPLICANT, application.getCustomerPartyId(),
+                "AGE", "Age", priority, PlanControlType.AGE_RANGE,
                 BigDecimal.valueOf(18), BigDecimal.valueOf(65), null, "Age is not eligible"
         );
     }
 
     private static ApplicationControlEntity credit(LoanApplicationEntity application, int priority) {
         return new ApplicationControlEntity(
-                application, "CREDIT", "Credit", priority, PlanControlType.MINIMUM_CREDIT_RANK,
-                BigDecimal.valueOf(7), null, "CREDIT_RATING_INQUIRY", "Credit rank is too low"
+                application, ControlSubjectType.APPLICANT, application.getCustomerPartyId(),
+                "CREDIT", "Credit", priority, PlanControlType.MINIMUM_CREDIT_RANK,
+                BigDecimal.valueOf(7), null, InquiryType.CREDIT_RATING, "Credit rank is too low"
         );
     }
 
     private static ApplicationControlEntity cheque(LoanApplicationEntity application, int priority) {
         return new ApplicationControlEntity(
-                application, "CHEQUE", "Cheque", priority, PlanControlType.NO_BAD_CHEQUE,
-                null, null, "BAD_CHEQUE_INQUIRY", "Applicant has an unsettled cheque"
+                application, ControlSubjectType.APPLICANT, application.getCustomerPartyId(),
+                "CHEQUE", "Cheque", priority, PlanControlType.NO_BAD_CHEQUE,
+                null, null, InquiryType.BAD_CHEQUE, "Applicant has an unsettled cheque"
         );
     }
 }

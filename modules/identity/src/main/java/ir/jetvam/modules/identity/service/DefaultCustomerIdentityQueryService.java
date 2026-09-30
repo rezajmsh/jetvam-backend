@@ -3,17 +3,16 @@ package ir.jetvam.modules.identity.service;
 import ir.jetvam.common.exception.OperationNotAllowedException;
 import ir.jetvam.common.exception.ResourceNotFoundException;
 import ir.jetvam.common.validation.Preconditions;
-import ir.jetvam.modules.identity.model.CustomerOnboardingStatus;
-import ir.jetvam.modules.identity.persistence.CustomerProfileEntity;
 import ir.jetvam.modules.identity.persistence.IndividualPartyEntity;
 import ir.jetvam.modules.identity.persistence.PartyEntity;
-import ir.jetvam.modules.identity.repository.CustomerProfileRepository;
 import ir.jetvam.modules.identity.repository.PartyRepository;
+import ir.jetvam.modules.identity.repository.IndividualPartyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
+import java.util.Optional;
 
 /**
  * Loads completed customer identity data for downstream business workflows.
@@ -26,7 +25,7 @@ import java.util.UUID;
 public class DefaultCustomerIdentityQueryService implements CustomerIdentityQueryService {
 
     private final PartyRepository partyRepository;
-    private final CustomerProfileRepository customerProfileRepository;
+    private final IndividualPartyRepository individualPartyRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -37,12 +36,10 @@ public class DefaultCustomerIdentityQueryService implements CustomerIdentityQuer
         if (!(party instanceof IndividualPartyEntity individual)) {
             throw new OperationNotAllowedException("start-loan-application", "Party is not an individual customer");
         }
-        CustomerProfileEntity profile = customerProfileRepository.findByPartyId(requiredPartyId)
-                .orElseThrow(() -> new ResourceNotFoundException("customerProfile", requiredPartyId));
-        if (profile.getOnboardingStatus() != CustomerOnboardingStatus.COMPLETED) {
+        if (!individual.isReadyForApplication()) {
             throw new OperationNotAllowedException(
                     "start-loan-application",
-                    "Customer identity profile must be completed before applying"
+                    "Customer identity and personal information must be completed before applying"
             );
         }
         Preconditions.requireNonNull(individual.getBirthDate(), "customer.birthDate");
@@ -54,5 +51,15 @@ public class DefaultCustomerIdentityQueryService implements CustomerIdentityQuer
                 individual.getBirthDate(),
                 individual.getMobile()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> findIndividualPartyId(String nationalCode, String mobile) {
+        String requiredNationalCode = Preconditions.requireText(nationalCode, "nationalCode").strip();
+        String requiredMobile = Preconditions.requireText(mobile, "mobile").strip();
+        return individualPartyRepository.findByNationalCode(requiredNationalCode)
+                .filter(individual -> requiredMobile.equals(individual.getMobile()))
+                .map(IndividualPartyEntity::getId);
     }
 }

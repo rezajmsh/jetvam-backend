@@ -110,4 +110,18 @@ INSERT INTO integration_provider (
     1000,
     1000,
     '{"mock":true}'
+), (
+    '00000000-0000-0000-0000-000000003102',
+    'SMS_SEND',
+    'SMS_MOCK',
+    'SMS_MOCK_V1',
+    true,
+    1000,
+    1,
+    'http://localhost',
+    '/mock/sms',
+    'NONE',
+    1000,
+    1000,
+    '{"mock":true}'
 );

@@ -2,6 +2,8 @@ package ir.jetvam.modules.inquiry.service;
 
 import ir.jetvam.common.validation.Preconditions;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -16,6 +18,8 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 public class DefaultInquiryWorkerService implements InquiryWorkerService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("jetvam.inquiry.worker");
 
     private final InquiryWorkTransactionService transactions;
     private final DeferredInquiryService deferredInquiryService;
@@ -54,16 +58,31 @@ public class DefaultInquiryWorkerService implements InquiryWorkerService {
             return WorkOutcome.NONE;
         }
         AsyncInquiryModels.WorkItem work = candidate.get();
+        LOGGER.info(
+                "inquiry.execution.started requestId={} inquiryCode={} providerCode={} polling={}",
+                work.requestId(), work.inquiryCode(), work.providerCode(), work.externalTrackingCode() != null
+        );
         try {
-            transactions.complete(work.requestId(), deferredInquiryService.execute(
+            DeferredInquiryModels.Result result = deferredInquiryService.execute(
                     new DeferredInquiryModels.Command(
                             work.inquiryCode(), work.nationalCode(), work.providerCode(),
                             work.externalTrackingCode()
                     )
-            ));
+            );
+            transactions.complete(work.requestId(), result);
+            LOGGER.info(
+                    "inquiry.execution.completed requestId={} inquiryCode={} providerCode={} status={} trackingCode={}",
+                    work.requestId(), work.inquiryCode(), result.providerCode(), result.status(),
+                    result.externalTrackingCode()
+            );
             return WorkOutcome.SUCCEEDED;
         } catch (RuntimeException exception) {
             transactions.fail(work.requestId(), exception);
+            LOGGER.warn(
+                    "inquiry.execution.failed requestId={} inquiryCode={} providerCode={} errorType={} errorMessage={}",
+                    work.requestId(), work.inquiryCode(), work.providerCode(),
+                    exception.getClass().getSimpleName(), exception.getMessage()
+            );
             return WorkOutcome.FAILED;
         }
     }
@@ -74,12 +93,26 @@ public class DefaultInquiryWorkerService implements InquiryWorkerService {
             return WorkOutcome.NONE;
         }
         AsyncInquiryModels.CallbackWork work = candidate.get();
+        LOGGER.info(
+                "inquiry.callback.started requestId={} inquiryCode={} transport={} destination={}",
+                work.event().requestId(), work.event().inquiryCode(), work.callback().transport(),
+                work.callback().destination()
+        );
         try {
             callbackDispatcher.dispatch(work);
             transactions.callbackDelivered(work.event().requestId());
+            LOGGER.info(
+                    "inquiry.callback.completed requestId={} inquiryCode={} destination={}",
+                    work.event().requestId(), work.event().inquiryCode(), work.callback().destination()
+            );
             return WorkOutcome.SUCCEEDED;
         } catch (RuntimeException exception) {
             transactions.callbackFailed(work.event().requestId(), exception);
+            LOGGER.warn(
+                    "inquiry.callback.failed requestId={} inquiryCode={} destination={} errorType={} errorMessage={}",
+                    work.event().requestId(), work.event().inquiryCode(), work.callback().destination(),
+                    exception.getClass().getSimpleName(), exception.getMessage()
+            );
             return WorkOutcome.FAILED;
         }
     }

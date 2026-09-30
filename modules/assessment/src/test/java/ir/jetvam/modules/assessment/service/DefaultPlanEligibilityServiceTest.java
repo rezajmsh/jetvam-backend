@@ -5,6 +5,7 @@ import ir.jetvam.modules.inquiry.service.InquiryRequests;
 import ir.jetvam.modules.inquiry.service.InquiryResults;
 import ir.jetvam.modules.inquiry.service.InquiryService;
 import ir.jetvam.modules.product.model.PlanControlType;
+import ir.jetvam.modules.product.model.ControlSubjectType;
 import ir.jetvam.modules.product.model.PublicationStatus;
 import ir.jetvam.modules.product.service.ProductCatalogService;
 import ir.jetvam.modules.product.service.ProductViews;
@@ -42,15 +43,15 @@ class DefaultPlanEligibilityServiceTest {
         InquiryService inquiries = mock(InquiryService.class);
         when(products.getActivePlan(planId)).thenReturn(plan(
                 planId,
-                new ProductViews.Control(
+                control(
                         "AGE", "Age", 1, PlanControlType.AGE_RANGE, BigDecimal.valueOf(18),
                         BigDecimal.valueOf(65), null, "Age is not eligible", true
                 ),
-                new ProductViews.Control(
+                control(
                         "CREDIT", "Credit", 2, PlanControlType.MINIMUM_CREDIT_RANK, BigDecimal.valueOf(7),
                         null, "CREDIT_RATING", "Credit rating is too low", true
                 ),
-                new ProductViews.Control(
+                control(
                         "CHEQUE", "Cheque", 3, PlanControlType.NO_BAD_CHEQUE, null,
                         null, "BAD_CHEQUE", "Applicant has unsettled cheques", true
                 )
@@ -84,7 +85,7 @@ class DefaultPlanEligibilityServiceTest {
         InquiryService inquiries = mock(InquiryService.class);
         when(products.getActivePlan(planId)).thenReturn(plan(
                 planId,
-                new ProductViews.Control(
+                control(
                         "AGE", "Age", 1, PlanControlType.AGE_RANGE, BigDecimal.valueOf(18),
                         null, null, "Applicant is too young", true
                 )
@@ -118,11 +119,28 @@ class DefaultPlanEligibilityServiceTest {
                 BigDecimal.valueOf(23),
                 PublicationStatus.ACTIVE,
                 0,
-                List.of(),
+                null,
                 List.of(),
                 List.of(),
                 List.of(),
                 List.of(controls)
+        );
+    }
+
+    private static ProductViews.Control control(
+            String code,
+            String title,
+            int priority,
+            PlanControlType type,
+            BigDecimal minimumValue,
+            BigDecimal maximumValue,
+            String sourceInquiryCode,
+            String failureMessage,
+            boolean enabled
+    ) {
+        return new ProductViews.Control(
+                UUID.randomUUID(), code, title, priority, type, ControlSubjectType.APPLICANT,
+                minimumValue, maximumValue, sourceInquiryCode, failureMessage, List.of(), enabled
         );
     }
 }

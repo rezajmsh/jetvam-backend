@@ -1,6 +1,6 @@
 package ir.jetvam.modules.inquiry.provider;
 
-import ir.jetvam.modules.inquiry.InquiryCapabilities;
+import ir.jetvam.common.inquiry.InquiryType;
 import ir.jetvam.modules.inquiry.service.InquiryRequests;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ class MockMobileOwnershipAdapterTest {
                 null
         );
 
-        assertThat(adapter.capabilityCode()).isEqualTo(InquiryCapabilities.MOBILE_OWNERSHIP);
+        assertThat(adapter.capabilityCode()).isEqualTo(InquiryType.MOBILE_OWNERSHIP.code());
         assertThat(adapter.adapterCode()).isEqualTo(MockMobileOwnershipAdapter.ADAPTER_CODE);
         assertThat(result.matched()).isTrue();
         assertThat(result.trackingId()).startsWith("MOCK-SHAHKAR-");

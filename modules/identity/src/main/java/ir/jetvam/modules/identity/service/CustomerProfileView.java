@@ -1,6 +1,8 @@
 package ir.jetvam.modules.identity.service;
 
-import ir.jetvam.modules.identity.model.CustomerOnboardingStatus;
+import ir.jetvam.modules.identity.model.IdentityVerificationStatus;
+import ir.jetvam.modules.identity.model.MobileVerificationStatus;
+import ir.jetvam.modules.identity.model.ShahkarStatus;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -18,6 +20,10 @@ public record CustomerProfileView(
         String firstName,
         String lastName,
         LocalDate birthDate,
-        CustomerOnboardingStatus onboardingStatus
+        MobileVerificationStatus mobileVerificationStatus,
+        ShahkarStatus shahkarStatus,
+        IdentityVerificationStatus identityVerificationStatus,
+        boolean identityInformationComplete,
+        boolean personalInformationComplete
 ) {
 }
