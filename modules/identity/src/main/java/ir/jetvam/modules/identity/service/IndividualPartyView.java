@@ -1,5 +1,10 @@
 package ir.jetvam.modules.identity.service;
 
+import ir.jetvam.modules.identity.model.IdentityVerificationStatus;
+import ir.jetvam.modules.identity.model.MobileVerificationStatus;
+import ir.jetvam.modules.identity.model.ShahkarStatus;
+
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -17,6 +22,19 @@ public record IndividualPartyView(
         String firstName,
         String lastName,
         LocalDate birthDate,
-        String mobile
+        String mobile,
+        MobileVerificationStatus mobileVerificationStatus,
+        Instant mobileVerifiedAt,
+        ShahkarStatus shahkarStatus,
+        Instant shahkarVerifiedAt,
+        String shahkarTrackingId,
+        IdentityVerificationStatus identityVerificationStatus,
+        Instant identityVerifiedAt,
+        String bankCardNumber,
+        String landline,
+        String postalCode,
+        String address,
+        boolean identityInformationComplete,
+        boolean personalInformationComplete
 ) {
 }

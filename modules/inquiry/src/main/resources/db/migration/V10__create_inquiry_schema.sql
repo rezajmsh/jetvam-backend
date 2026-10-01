@@ -31,6 +31,7 @@ CREATE TABLE inquiry_request (
     attempt_count INTEGER NOT NULL DEFAULT 0,
     next_attempt_at TIMESTAMP WITH TIME ZONE,
     processing_started_at TIMESTAMP WITH TIME ZONE,
+    response_mode VARCHAR(30) NOT NULL,
     callback_transport VARCHAR(50),
     callback_destination VARCHAR(150),
     callback_correlation_id VARCHAR(150),
@@ -48,13 +49,16 @@ CREATE TABLE inquiry_request (
         REFERENCES inquiry_definition(inquiry_code),
     CONSTRAINT ck_inquiry_attempt_count CHECK (attempt_count >= 0),
     CONSTRAINT ck_inquiry_callback_attempt_count CHECK (callback_attempt_count >= 0),
+    CONSTRAINT ck_inquiry_response_mode CHECK (response_mode IN ('SYNCHRONOUS', 'ASYNC_CALLBACK')),
     CONSTRAINT ck_inquiry_callback_configuration CHECK (
-        (callback_transport IS NULL
+        (response_mode = 'SYNCHRONOUS'
+            AND callback_transport IS NULL
             AND callback_destination IS NULL
             AND callback_correlation_id IS NULL
             AND callback_status = 'NOT_REQUIRED')
         OR
-        (callback_transport IS NOT NULL
+        (response_mode = 'ASYNC_CALLBACK'
+            AND callback_transport IS NOT NULL
             AND callback_destination IS NOT NULL
             AND callback_correlation_id IS NOT NULL
             AND callback_status <> 'NOT_REQUIRED')

@@ -2,7 +2,6 @@ package ir.jetvam.modules.inquiry.provider;
 
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.common.inquiry.InquiryType;
-import ir.jetvam.modules.inquiry.service.DeferredInquiryStatus;
 import ir.jetvam.modules.integration.routing.ExternalProviderAdapter;
 import ir.jetvam.modules.integration.routing.ProviderInvocationContext;
 import org.springframework.stereotype.Component;
@@ -33,7 +32,7 @@ public final class MockCreditRatingSubmitAdapter implements ExternalProviderAdap
     ) {
         Preconditions.requireNonNull(command, "command");
         return new CreditRatingProtocol.Progress(
-                DeferredInquiryStatus.PENDING,
+                CreditRatingProgressStatus.PENDING,
                 "MOCK-CREDIT-" + UUID.randomUUID(),
                 30,
                 null,

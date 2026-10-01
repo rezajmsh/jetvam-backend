@@ -1,7 +1,6 @@
 package ir.jetvam.modules.inquiry.provider;
 
 import ir.jetvam.common.inquiry.InquiryType;
-import ir.jetvam.modules.inquiry.service.DeferredInquiryStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,9 +26,9 @@ class MockCreditRatingAdaptersTest {
         );
 
         assertThat(submitAdapter.capabilityCode()).isEqualTo(InquiryType.CREDIT_RATING_SUBMIT.code());
-        assertThat(submitted.status()).isEqualTo(DeferredInquiryStatus.PENDING);
+        assertThat(submitted.status()).isEqualTo(CreditRatingProgressStatus.PENDING);
         assertThat(submitted.trackingCode()).startsWith("MOCK-CREDIT-");
-        assertThat(completed.status()).isEqualTo(DeferredInquiryStatus.COMPLETED);
+        assertThat(completed.status()).isEqualTo(CreditRatingProgressStatus.COMPLETED);
         assertThat(completed.trackingCode()).isEqualTo(submitted.trackingCode());
         assertThat(completed.rank()).isEqualTo(8);
     }

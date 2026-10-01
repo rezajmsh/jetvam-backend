@@ -26,6 +26,8 @@ public interface JobManagementService {
 
     Page<JobExecutionView> history(UUID definitionId, Pageable pageable);
 
+    Page<JobExecutionItemView> executionItems(UUID definitionId, UUID executionId, Pageable pageable);
+
     JobStatisticsView statistics(UUID definitionId);
 
     JobExecutionView executeManually(UUID definitionId, String requestedBy);

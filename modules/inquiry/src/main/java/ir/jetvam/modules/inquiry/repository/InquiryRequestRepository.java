@@ -25,6 +25,10 @@ import java.util.UUID;
  */
 public interface InquiryRequestRepository extends JetvamJpaRepository<InquiryRequestEntity, UUID> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select request from InquiryRequestEntity request where request.id = :requestId")
+    Optional<InquiryRequestEntity> findLockedById(UUID requestId);
+
     Optional<InquiryRequestEntity> findByCallbackTransportAndCallbackDestinationAndCallbackCorrelationId(
             String transport,
             String destination,

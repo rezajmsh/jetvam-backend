@@ -4,12 +4,14 @@ import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.apps.jobs.infrastructure.handler.JobHandler;
 import ir.jetvam.apps.jobs.infrastructure.handler.JobHandlerRegistry;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobDefinitionRepository;
+import ir.jetvam.apps.jobs.infrastructure.repository.JobExecutionItemRepository;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobExecutionRepository;
 import ir.jetvam.apps.jobs.infrastructure.scheduler.JobExecutionLockService;
 import ir.jetvam.apps.jobs.infrastructure.scheduler.JobLauncher;
 import ir.jetvam.apps.jobs.infrastructure.scheduler.JobScheduleRegistry;
 import ir.jetvam.apps.jobs.infrastructure.service.DefaultJobManagementService;
 import ir.jetvam.apps.jobs.infrastructure.service.JobExecutionCoordinator;
+import ir.jetvam.apps.jobs.infrastructure.service.JobExecutionItemPersistenceService;
 import ir.jetvam.apps.jobs.infrastructure.service.JobExecutionPersistenceService;
 import ir.jetvam.apps.jobs.infrastructure.service.JobManagementService;
 import org.springframework.beans.factory.ObjectProvider;
@@ -55,6 +57,14 @@ public class JobsConfiguration {
     }
 
     @Bean
+    JobExecutionItemPersistenceService jetvamJobExecutionItemPersistenceService(
+            JobExecutionRepository executions,
+            JobExecutionItemRepository items
+    ) {
+        return new JobExecutionItemPersistenceService(executions, items);
+    }
+
+    @Bean
     ThreadPoolTaskScheduler jetvamJobTaskScheduler(
             @Value("${jetvam.jobs.scheduler-thread-count:2}") int threadCount
     ) {
@@ -67,6 +77,7 @@ public class JobsConfiguration {
         return scheduler;
     }
 
+    @Bean
     SimpleAsyncTaskExecutor jetvamJobTaskExecutor(
             @Value("${jetvam.jobs.execution-concurrency:10}") int concurrency
     ) {
@@ -77,6 +88,7 @@ public class JobsConfiguration {
         return executor;
     }
 
+    @Bean
     JobExecutionLockService jetvamJobExecutionLockService(
             JobDefinitionRepository definitions,
             TimeProvider timeProvider,
@@ -86,6 +98,7 @@ public class JobsConfiguration {
         return new JobExecutionLockService(definitions, timeProvider, instanceId, lockDuration);
     }
 
+    @Bean
     JobLauncher jetvamJobLauncher(
             SimpleAsyncTaskExecutor jetvamJobTaskExecutor,
             JobExecutionCoordinator coordinator,
@@ -95,6 +108,7 @@ public class JobsConfiguration {
         return new JobLauncher(jetvamJobTaskExecutor, coordinator, lockService, timeProvider);
     }
 
+    @Bean
     JobScheduleRegistry jetvamJobScheduleRegistry(
             JobDefinitionRepository definitions,
             ThreadPoolTaskScheduler jetvamJobTaskScheduler,
@@ -107,6 +121,7 @@ public class JobsConfiguration {
     JobManagementService jetvamJobManagementService(
             JobDefinitionRepository definitions,
             JobExecutionRepository executions,
+            JobExecutionItemRepository executionItems,
             JobExecutionPersistenceService persistenceService,
             JobExecutionCoordinator coordinator,
             JobHandlerRegistry handlerRegistry,
@@ -114,7 +129,8 @@ public class JobsConfiguration {
             JobLauncher launcher
     ) {
         return new DefaultJobManagementService(
-                definitions, executions, persistenceService, coordinator, handlerRegistry, scheduleRegistry, launcher
+                definitions, executions, executionItems, persistenceService, coordinator, handlerRegistry,
+                scheduleRegistry, launcher
         );
     }
 }

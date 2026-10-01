@@ -1,8 +1,11 @@
 package ir.jetvam.modules.inquiry.service;
 
-import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import ir.jetvam.common.inquiry.InquiryType;
+import ir.jetvam.modules.inquiry.execution.InquiryExecutionContext;
+import ir.jetvam.modules.inquiry.model.InquiryResponseMode;
+import ir.jetvam.modules.inquiry.model.InquiryStatus;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -23,24 +26,57 @@ public final class AsyncInquiryModels {
     public record Callback(String transport, String destination, String correlationId) {
     }
 
-    public record Submit(InquiryType inquiryCode, String nationalCode, Callback callback) {
+    public enum WorkKind {
+        INQUIRY,
+        CALLBACK
     }
 
-    public record BatchResult(long processedCount, long succeededCount, long failedCount) {
+    public record WorkResult(
+            UUID requestId,
+            WorkKind kind,
+            InquiryType inquiryCode,
+            String nationalCode,
+            String subjectKey,
+            boolean succeeded,
+            String businessStatus,
+            String providerCode,
+            String externalReference,
+            String message
+    ) {
+    }
+
+    public record BatchResult(
+            long processedCount,
+            long succeededCount,
+            long failedCount,
+            List<WorkResult> items
+    ) {
+        public BatchResult {
+            items = items == null ? List.of() : List.copyOf(items);
+        }
+
+        public BatchResult(long processedCount, long succeededCount, long failedCount) {
+            this(processedCount, succeededCount, failedCount, List.of());
+        }
     }
 
     public record WorkItem(
             UUID requestId,
             InquiryType inquiryCode,
             String nationalCode,
-            String providerCode,
-            String externalTrackingCode
+            String subjectKey,
+            String requestJson,
+            InquiryResponseMode responseMode,
+            InquiryExecutionContext context
     ) {
     }
 
     public record CompletionEvent(
             UUID requestId,
             InquiryType inquiryCode,
+            String nationalCode,
+            String subjectKey,
+            String providerCode,
             InquiryStatus status,
             Map<String, String> facts,
             String rejectionCode,

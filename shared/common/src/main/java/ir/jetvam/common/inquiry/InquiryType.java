@@ -11,30 +11,24 @@ import java.util.Arrays;
  */
 public enum InquiryType {
 
-    MOBILE_OWNERSHIP("SHAHKAR_VERIFY", false),
-    CIVIL_REGISTRATION("CIVIL_REGISTRATION_INQUIRY", true),
-    MILITARY_STATUS("MILITARY_STATUS_INQUIRY", true),
-    BANK_ACCOUNT_STATUS("BANK_ACCOUNT_STATUS_INQUIRY", true),
-    BANKING_FACILITIES("BANKING_FACILITIES_INQUIRY", true),
-    BAD_CHEQUE("BAD_CHEQUE_INQUIRY", true),
-    CREDIT_RATING("CREDIT_RATING_INQUIRY", true),
-    CREDIT_RATING_SUBMIT("CREDIT_RATING_SUBMIT", false),
-    CREDIT_RATING_POLL("CREDIT_RATING_POLL", false);
+    MOBILE_OWNERSHIP("SHAHKAR_VERIFY"),
+    CIVIL_REGISTRATION("CIVIL_REGISTRATION_INQUIRY"),
+    MILITARY_STATUS("MILITARY_STATUS_INQUIRY"),
+    BANK_ACCOUNT_STATUS("BANK_ACCOUNT_STATUS_INQUIRY"),
+    BANKING_FACILITIES("BANKING_FACILITIES_INQUIRY"),
+    BAD_CHEQUE("BAD_CHEQUE_INQUIRY"),
+    CREDIT_RATING("CREDIT_RATING_INQUIRY"),
+    CREDIT_RATING_SUBMIT("CREDIT_RATING_SUBMIT"),
+    CREDIT_RATING_POLL("CREDIT_RATING_POLL");
 
     private final String code;
-    private final boolean deferredBusinessInquiry;
 
-    InquiryType(String code, boolean deferredBusinessInquiry) {
+    InquiryType(String code) {
         this.code = code;
-        this.deferredBusinessInquiry = deferredBusinessInquiry;
     }
 
     public String code() {
         return code;
-    }
-
-    public boolean deferredBusinessInquiry() {
-        return deferredBusinessInquiry;
     }
 
     public static InquiryType fromCode(String code) {
@@ -48,14 +42,4 @@ public enum InquiryType {
                 .orElseThrow(() -> new IllegalArgumentException("Unsupported inquiry code: " + code));
     }
 
-    public static InquiryType deferredFromCode(String code) {
-        return requireDeferred(fromCode(code));
-    }
-
-    public static InquiryType requireDeferred(InquiryType type) {
-        if (type == null || !type.deferredBusinessInquiry) {
-            throw new IllegalArgumentException("Inquiry is not executable by the deferred worker: " + type);
-        }
-        return type;
-    }
 }

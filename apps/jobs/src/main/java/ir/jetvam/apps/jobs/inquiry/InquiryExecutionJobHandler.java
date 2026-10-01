@@ -4,27 +4,27 @@ import ir.jetvam.apps.jobs.infrastructure.handler.JobContext;
 import ir.jetvam.apps.jobs.infrastructure.handler.JobHandler;
 import ir.jetvam.apps.jobs.infrastructure.handler.JobResult;
 import ir.jetvam.modules.inquiry.service.AsyncInquiryModels;
-import ir.jetvam.modules.inquiry.service.InquiryWorkerService;
+import ir.jetvam.modules.inquiry.service.InquiryExecutionWorkerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
- * Delegates scheduled provider and callback work to the independent Inquiry module.
- * It contains no knowledge of Origination or any other inquiry consumer.
+ * Runs provider submission and polling independently from callback delivery.
  *
  * @author reza jamshidi
- * @since 9/25/2026
+ * @since 9/30/2026
  */
 @Component
 @RequiredArgsConstructor
-public class InquiryDispatchJobHandler implements JobHandler {
+public class InquiryExecutionJobHandler implements JobHandler {
 
-    public static final String KEY = "inquiry-dispatch";
+    public static final String KEY = "inquiry-execution";
 
-    private final InquiryWorkerService inquiryWorkerService;
+    private final InquiryExecutionWorkerService workerService;
+    private final InquiryJobItemRecorder itemRecorder;
 
-    @Value("${jetvam.inquiry.worker.batch-size:50}")
+    @Value("${jetvam.inquiry.execution-worker.batch-size:${jetvam.inquiry.worker.batch-size:50}}")
     private int batchSize;
 
     @Override
@@ -34,10 +34,11 @@ public class InquiryDispatchJobHandler implements JobHandler {
 
     @Override
     public JobResult execute(JobContext context) {
-        AsyncInquiryModels.BatchResult result = inquiryWorkerService.processBatch(batchSize);
+        AsyncInquiryModels.BatchResult result = workerService.processBatch(batchSize);
+        itemRecorder.record(context, result);
         return JobResult.completed(
                 result.processedCount(), result.succeededCount(), result.failedCount(),
-                "Inquiry provider and callback batch completed"
+                "Inquiry provider execution batch completed"
         );
     }
 }

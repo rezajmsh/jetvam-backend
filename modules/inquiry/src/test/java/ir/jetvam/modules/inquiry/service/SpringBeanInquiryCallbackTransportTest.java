@@ -25,8 +25,9 @@ class SpringBeanInquiryCallbackTransportTest {
         InquiryCompletionHandler handler = handler("origination", received);
         SpringBeanInquiryCallbackTransport transport = new SpringBeanInquiryCallbackTransport(List.of(handler));
         AsyncInquiryModels.CompletionEvent event = new AsyncInquiryModels.CompletionEvent(
-                java.util.UUID.randomUUID(), InquiryType.CREDIT_RATING, InquiryStatus.COMPLETED,
-                Map.of("rank", "5"), null, null, "local-id"
+                java.util.UUID.randomUUID(), InquiryType.CREDIT_RATING, "0012345678", "party-1",
+                "mock-credit", InquiryStatus.COMPLETED,
+                Map.of("rank", "5", "trackingId", "tracking-1"), null, null, "local-id"
         );
 
         transport.deliver(new AsyncInquiryModels.Callback("SPRING_BEAN", "origination", "local-id"), event);

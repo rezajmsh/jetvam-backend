@@ -8,6 +8,7 @@ import ir.jetvam.apps.jobs.infrastructure.persistence.JobDefinitionEntity;
 import ir.jetvam.apps.jobs.infrastructure.persistence.JobExecutionEntity;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobDefinitionRepository;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobExecutionRepository;
+import ir.jetvam.apps.jobs.infrastructure.repository.JobExecutionItemRepository;
 import ir.jetvam.apps.jobs.infrastructure.repository.JobExecutionStatistics;
 import ir.jetvam.apps.jobs.infrastructure.scheduler.JobLauncher;
 import ir.jetvam.apps.jobs.infrastructure.scheduler.JobScheduleRegistry;
@@ -32,6 +33,7 @@ public class DefaultJobManagementService implements JobManagementService {
 
     private final JobDefinitionRepository definitionRepository;
     private final JobExecutionRepository executionRepository;
+    private final JobExecutionItemRepository executionItemRepository;
     private final JobExecutionPersistenceService executionPersistenceService;
     private final JobExecutionCoordinator executionCoordinator;
     private final JobHandlerRegistry handlerRegistry;
@@ -124,6 +126,23 @@ public class DefaultJobManagementService implements JobManagementService {
             throw new ResourceNotFoundException("job definition", definitionId);
         }
         return executionRepository.findAllByDefinition_Id(definitionId, pageable).map(DefaultJobManagementService::toView);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<JobExecutionItemView> executionItems(UUID definitionId, UUID executionId, Pageable pageable) {
+        JobExecutionEntity execution = executionRepository.findById(executionId)
+                .orElseThrow(() -> new ResourceNotFoundException("job execution", executionId));
+        if (!execution.getDefinition().getId().equals(definitionId)) {
+            throw new ResourceNotFoundException("job execution", executionId);
+        }
+        return executionItemRepository.findAllByExecution_Id(executionId, pageable)
+                .map(item -> new JobExecutionItemView(
+                        item.getId(), executionId, item.getSequenceNumber(), item.getItemType(), item.getItemKey(),
+                        item.getOperationCode(), item.getSubjectIdentifier(), item.getSubjectKey(), item.getStatus(),
+                        item.getBusinessStatus(), item.getProviderCode(), item.getExternalReference(),
+                        item.getMessage(), item.getCreatedAt()
+                ));
     }
 
     @Override

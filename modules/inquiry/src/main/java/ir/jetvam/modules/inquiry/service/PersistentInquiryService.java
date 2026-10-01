@@ -1,14 +1,14 @@
 package ir.jetvam.modules.inquiry.service;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
+import ir.jetvam.common.exception.IntegrationException;
 import ir.jetvam.common.validation.IranianIdentifiers;
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.common.inquiry.InquiryType;
-import ir.jetvam.modules.integration.routing.ProviderExecution;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.Map;
 import java.util.function.Function;
 
 /**
@@ -22,9 +22,7 @@ import java.util.function.Function;
 @RequiredArgsConstructor
 public class PersistentInquiryService implements InquiryService {
 
-    private final RoutingInquiryService providerService;
-    private final InquiryExecutionStore executionStore;
-    private final ObjectMapper objectMapper;
+    private final InquiryRequestService inquiryRequestService;
 
     @Override
     public InquiryResults.MobileOwnership verifyMobileOwnership(InquiryRequests.MobileOwnership request) {
@@ -38,9 +36,7 @@ public class PersistentInquiryService implements InquiryService {
                 nationalCode,
                 nationalCode + ":" + mobile,
                 normalized,
-                InquiryResults.MobileOwnership.class,
-                () -> providerService.verifyMobileOwnership(normalized),
-                InquiryResults.MobileOwnership::trackingId
+                PersistentInquiryService::mobileOwnership
         );
     }
 
@@ -50,9 +46,7 @@ public class PersistentInquiryService implements InquiryService {
         InquiryRequests.CivilRegistration normalized = new InquiryRequests.CivilRegistration(nationalCode);
         return executeNationalCode(
                 InquiryType.CIVIL_REGISTRATION, nationalCode, normalized,
-                InquiryResults.CivilRegistration.class,
-                () -> providerService.findCivilRegistration(normalized),
-                InquiryResults.CivilRegistration::trackingId
+                PersistentInquiryService::civilRegistration
         );
     }
 
@@ -62,9 +56,7 @@ public class PersistentInquiryService implements InquiryService {
         InquiryRequests.MilitaryStatus normalized = new InquiryRequests.MilitaryStatus(nationalCode);
         return executeNationalCode(
                 InquiryType.MILITARY_STATUS, nationalCode, normalized,
-                InquiryResults.MilitaryStatus.class,
-                () -> providerService.findMilitaryStatus(normalized),
-                InquiryResults.MilitaryStatus::trackingId
+                PersistentInquiryService::militaryStatus
         );
     }
 
@@ -74,9 +66,7 @@ public class PersistentInquiryService implements InquiryService {
         InquiryRequests.BankAccountStatus normalized = new InquiryRequests.BankAccountStatus(nationalCode);
         return executeNationalCode(
                 InquiryType.BANK_ACCOUNT_STATUS, nationalCode, normalized,
-                InquiryResults.BankAccountStatus.class,
-                () -> providerService.findBankAccountStatus(normalized),
-                InquiryResults.BankAccountStatus::trackingId
+                PersistentInquiryService::bankAccountStatus
         );
     }
 
@@ -86,9 +76,7 @@ public class PersistentInquiryService implements InquiryService {
         InquiryRequests.BankingFacilities normalized = new InquiryRequests.BankingFacilities(nationalCode);
         return executeNationalCode(
                 InquiryType.BANKING_FACILITIES, nationalCode, normalized,
-                InquiryResults.BankingFacilities.class,
-                () -> providerService.findBankingFacilities(normalized),
-                InquiryResults.BankingFacilities::trackingId
+                PersistentInquiryService::bankingFacilities
         );
     }
 
@@ -98,9 +86,7 @@ public class PersistentInquiryService implements InquiryService {
         InquiryRequests.BadCheque normalized = new InquiryRequests.BadCheque(nationalCode);
         return executeNationalCode(
                 InquiryType.BAD_CHEQUE, nationalCode, normalized,
-                InquiryResults.BadCheque.class,
-                () -> providerService.findBadCheques(normalized),
-                InquiryResults.BadCheque::trackingId
+                PersistentInquiryService::badCheque
         );
     }
 
@@ -110,9 +96,7 @@ public class PersistentInquiryService implements InquiryService {
         InquiryRequests.CreditRating normalized = new InquiryRequests.CreditRating(nationalCode);
         return executeNationalCode(
                 InquiryType.CREDIT_RATING, nationalCode, normalized,
-                InquiryResults.CreditRating.class,
-                () -> providerService.findCreditRating(normalized),
-                InquiryResults.CreditRating::trackingId
+                PersistentInquiryService::creditRating
         );
     }
 
@@ -120,12 +104,10 @@ public class PersistentInquiryService implements InquiryService {
             InquiryType inquiryCode,
             String nationalCode,
             C command,
-            Class<R> resultType,
-            ProviderCall<R> providerCall,
-            Function<R, String> trackingId
+            Function<InquirySubmissionModels.Result, R> resultMapper
     ) {
         return execute(
-                inquiryCode, nationalCode, nationalCode, command, resultType, providerCall, trackingId
+                inquiryCode, nationalCode, nationalCode, command, resultMapper
         );
     }
 
@@ -134,49 +116,21 @@ public class PersistentInquiryService implements InquiryService {
             String nationalCode,
             String subjectKey,
             C command,
-            Class<R> resultType,
-            ProviderCall<R> providerCall,
-            Function<R, String> trackingId
+            Function<InquirySubmissionModels.Result, R> resultMapper
     ) {
-        String requestJson = write(command);
-        InquiryExecutionStore.Preparation preparation = executionStore.prepare(
-                inquiryCode, nationalCode, subjectKey, requestJson
+        InquirySubmissionModels.Result result = inquiryRequestService.submit(
+                InquirySubmissionModels.Command.synchronous(
+                        inquiryCode, nationalCode, subjectKey, command
+                )
         );
-        if (preparation.cacheHit()) {
-            return read(preparation.cachedResultJson(), resultType);
-        }
-        try {
-            ProviderExecution<R> execution = providerCall.execute();
-            R result = execution.result();
-            executionStore.complete(
-                    preparation.requestId(), execution.providerCode(), trackingId.apply(result),
-                    write(result), preparation.validity()
+        if (result.status() != ir.jetvam.modules.inquiry.model.InquiryStatus.COMPLETED) {
+            throw new IntegrationException(
+                    result.providerCode() == null ? "inquiry" : result.providerCode(),
+                    inquiryCode.code(),
+                    new IllegalStateException(result.message() == null ? result.status().name() : result.message())
             );
-            return result;
-        } catch (RuntimeException failure) {
-            try {
-                executionStore.fail(preparation.requestId(), failure);
-            } catch (RuntimeException persistenceFailure) {
-                failure.addSuppressed(persistenceFailure);
-            }
-            throw failure;
         }
-    }
-
-    private String write(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JacksonException exception) {
-            throw new IllegalArgumentException("Unable to persist inquiry payload", exception);
-        }
-    }
-
-    private <R> R read(String json, Class<R> resultType) {
-        try {
-            return objectMapper.readValue(json, resultType);
-        } catch (JacksonException exception) {
-            throw new IllegalArgumentException("Unable to read cached inquiry result", exception);
-        }
+        return resultMapper.apply(result);
     }
 
     private static String normalizedNationalCode(String value) {
@@ -185,8 +139,64 @@ public class PersistentInquiryService implements InquiryService {
         return nationalCode;
     }
 
-    @FunctionalInterface
-    private interface ProviderCall<R> {
-        ProviderExecution<R> execute();
+    private static InquiryResults.MobileOwnership mobileOwnership(InquirySubmissionModels.Result execution) {
+        return new InquiryResults.MobileOwnership(
+                Boolean.parseBoolean(required(execution.facts(), "matched")), trackingId(execution)
+        );
+    }
+
+    private static InquiryResults.CivilRegistration civilRegistration(InquirySubmissionModels.Result execution) {
+        return new InquiryResults.CivilRegistration(
+                Boolean.parseBoolean(required(execution.facts(), "identityValid")),
+                Boolean.parseBoolean(required(execution.facts(), "alive")), trackingId(execution)
+        );
+    }
+
+    private static InquiryResults.MilitaryStatus militaryStatus(InquirySubmissionModels.Result execution) {
+        return new InquiryResults.MilitaryStatus(
+                required(execution.facts(), "statusCode"),
+                Boolean.parseBoolean(required(execution.facts(), "eligible")), trackingId(execution)
+        );
+    }
+
+    private static InquiryResults.BankAccountStatus bankAccountStatus(InquirySubmissionModels.Result execution) {
+        return new InquiryResults.BankAccountStatus(
+                required(execution.facts(), "statusCode"),
+                Boolean.parseBoolean(required(execution.facts(), "active")), trackingId(execution)
+        );
+    }
+
+    private static InquiryResults.BankingFacilities bankingFacilities(InquirySubmissionModels.Result execution) {
+        Map<String, String> facts = execution.facts();
+        return new InquiryResults.BankingFacilities(
+                Integer.parseInt(required(facts, "directFacilityCount")),
+                Integer.parseInt(required(facts, "indirectFacilityCount")),
+                Boolean.parseBoolean(required(facts, "hasOverdueDebt")),
+                new BigDecimal(required(facts, "overdueAmount")), trackingId(execution)
+        );
+    }
+
+    private static InquiryResults.BadCheque badCheque(InquirySubmissionModels.Result execution) {
+        return new InquiryResults.BadCheque(
+                Integer.parseInt(required(execution.facts(), "unsettledCount")),
+                new BigDecimal(required(execution.facts(), "totalAmount")), trackingId(execution)
+        );
+    }
+
+    private static InquiryResults.CreditRating creditRating(InquirySubmissionModels.Result execution) {
+        String score = execution.facts().get("score");
+        return new InquiryResults.CreditRating(
+                required(execution.facts(), "ratingCode"),
+                Integer.parseInt(required(execution.facts(), "rank")),
+                score == null ? null : new BigDecimal(score), trackingId(execution)
+        );
+    }
+
+    private static String trackingId(InquirySubmissionModels.Result execution) {
+        return execution.facts().get("trackingId");
+    }
+
+    private static String required(Map<String, String> facts, String key) {
+        return Preconditions.requireText(facts.get(key), "provider." + key);
     }
 }

@@ -1,7 +1,8 @@
 package ir.jetvam.modules.origination.service;
 
-import ir.jetvam.modules.inquiry.service.AsyncInquiryModels;
-import ir.jetvam.modules.inquiry.service.AsyncInquiryService;
+import ir.jetvam.modules.inquiry.service.InquiryRequestService;
+import ir.jetvam.modules.inquiry.service.InquiryRequests;
+import ir.jetvam.modules.inquiry.service.InquirySubmissionModels;
 import ir.jetvam.modules.origination.model.ApplicationControlEntity;
 import ir.jetvam.modules.origination.model.ApplicationControlStatus;
 import ir.jetvam.modules.origination.model.LoanApplicationEntity;
@@ -19,21 +20,35 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class OriginationControlInquiryService {
 
-    private final AsyncInquiryService asyncInquiryService;
+    private final InquiryRequestService inquiryRequestService;
 
     public void submit(LoanApplicationEntity application, ApplicationControlEntity control) {
         if (control.getStatus() != ApplicationControlStatus.PENDING_INQUIRY) {
             return;
         }
-        java.util.UUID requestId = asyncInquiryService.submit(new AsyncInquiryModels.Submit(
+        java.util.UUID requestId = inquiryRequestService.submit(InquirySubmissionModels.Command.asynchronous(
                 control.getSourceInquiryCode(),
                 application.getNationalCode(),
-                new AsyncInquiryModels.Callback(
-                        AsyncInquiryModels.SPRING_BEAN,
+                application.getNationalCode(),
+                request(control.getSourceInquiryCode(), application.getNationalCode()),
+                new InquirySubmissionModels.Callback(
+                        InquirySubmissionModels.SPRING_BEAN,
                         OriginationControlCompletionHandler.KEY,
                         control.getId().toString()
                 )
-        ));
+        )).requestId();
         control.inquirySubmitted(requestId);
+    }
+
+    private static Object request(ir.jetvam.common.inquiry.InquiryType type, String nationalCode) {
+        return switch (type) {
+            case CIVIL_REGISTRATION -> new InquiryRequests.CivilRegistration(nationalCode);
+            case MILITARY_STATUS -> new InquiryRequests.MilitaryStatus(nationalCode);
+            case BANK_ACCOUNT_STATUS -> new InquiryRequests.BankAccountStatus(nationalCode);
+            case BANKING_FACILITIES -> new InquiryRequests.BankingFacilities(nationalCode);
+            case BAD_CHEQUE -> new InquiryRequests.BadCheque(nationalCode);
+            case CREDIT_RATING -> new InquiryRequests.CreditRating(nationalCode);
+            default -> throw new IllegalArgumentException("Unsupported application inquiry: " + type);
+        };
     }
 }

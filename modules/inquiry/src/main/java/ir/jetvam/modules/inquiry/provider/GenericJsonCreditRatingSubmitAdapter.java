@@ -1,7 +1,6 @@
 package ir.jetvam.modules.inquiry.provider;
 
 import ir.jetvam.common.inquiry.InquiryType;
-import ir.jetvam.modules.inquiry.service.DeferredInquiryStatus;
 import ir.jetvam.modules.integration.http.DynamicProviderHttpClientFactory;
 import org.springframework.stereotype.Component;
 
@@ -60,7 +59,7 @@ public class GenericJsonCreditRatingSubmitAdapter extends AbstractJsonInquiryAda
     }
 
     record Response(
-            DeferredInquiryStatus status,
+            CreditRatingProgressStatus status,
             String trackingCode,
             int retryAfterSeconds,
             String ratingCode,

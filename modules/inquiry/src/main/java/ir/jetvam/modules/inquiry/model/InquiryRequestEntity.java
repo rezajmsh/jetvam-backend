@@ -18,7 +18,7 @@ import java.time.Instant;
 
 /**
  * Persists every synchronous or asynchronous inquiry invocation and its normalized result.
- * Cache reuse, provider affinity, polling and callback retries remain durable across restarts.
+ * Cache reuse, provider affinity, opaque provider context and callback retries remain durable across restarts.
  *
  * @author reza jamshidi
  * @since 9/25/2026
@@ -49,8 +49,8 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     @Column(name = "provider_code", length = 100)
     private String providerCode;
 
-    @Column(name = "external_tracking_code", length = 150)
-    private String externalTrackingCode;
+    @Column(name = "execution_context_json", columnDefinition = "text")
+    private String executionContextJson;
 
     @Column(name = "result_json", columnDefinition = "text")
     private String resultJson;
@@ -82,6 +82,10 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     @Column(name = "processing_started_at")
     private Instant processingStartedAt;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "response_mode", nullable = false, length = 30)
+    private InquiryResponseMode responseMode;
+
     @Column(name = "callback_transport", length = 50)
     private String callbackTransport;
 
@@ -112,6 +116,7 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
             String nationalCode,
             String subjectKey,
             String requestJson,
+            InquiryResponseMode responseMode,
             String callbackTransport,
             String callbackDestination,
             String callbackCorrelationId,
@@ -121,11 +126,18 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
         this.nationalCode = normalized(nationalCode, "nationalCode");
         this.subjectKey = normalized(subjectKey, "subjectKey");
         this.requestJson = Preconditions.requireText(requestJson, "requestJson");
-        this.callbackTransport = normalized(callbackTransport, "callbackTransport");
-        this.callbackDestination = normalized(callbackDestination, "callbackDestination");
-        this.callbackCorrelationId = normalized(callbackCorrelationId, "callbackCorrelationId");
+        this.responseMode = Preconditions.requireNonNull(responseMode, "responseMode");
+        if (responseMode == InquiryResponseMode.ASYNC_CALLBACK) {
+            this.callbackTransport = normalized(callbackTransport, "callbackTransport");
+            this.callbackDestination = normalized(callbackDestination, "callbackDestination");
+            this.callbackCorrelationId = normalized(callbackCorrelationId, "callbackCorrelationId");
+            this.callbackStatus = InquiryCallbackStatus.NOT_READY;
+        } else {
+            Preconditions.require(callbackTransport == null && callbackDestination == null
+                    && callbackCorrelationId == null, "Synchronous inquiry must not define a callback");
+            this.callbackStatus = InquiryCallbackStatus.NOT_REQUIRED;
+        }
         this.status = InquiryStatus.QUEUED;
-        this.callbackStatus = InquiryCallbackStatus.NOT_READY;
         this.nextAttemptAt = Preconditions.requireNonNull(now, "now");
     }
 
@@ -136,16 +148,10 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
             String requestJson,
             Instant now
     ) {
-        InquiryRequestEntity request = new InquiryRequestEntity();
-        request.inquiryCode = Preconditions.requireNonNull(inquiryCode, "inquiryCode");
-        request.nationalCode = normalized(nationalCode, "nationalCode");
-        request.subjectKey = normalized(subjectKey, "subjectKey");
-        request.requestJson = Preconditions.requireText(requestJson, "requestJson");
-        request.status = InquiryStatus.PROCESSING;
-        request.processingStartedAt = Preconditions.requireNonNull(now, "now");
-        request.attemptCount = 1;
-        request.callbackStatus = InquiryCallbackStatus.NOT_REQUIRED;
-        return request;
+        return new InquiryRequestEntity(
+                inquiryCode, nationalCode, subjectKey, requestJson, InquiryResponseMode.SYNCHRONOUS,
+                null, null, null, now
+        );
     }
 
     public static InquiryRequestEntity reusedSynchronously(
@@ -170,6 +176,7 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     ) {
         InquiryRequestEntity request = new InquiryRequestEntity(
                 source.inquiryCode, source.nationalCode, source.subjectKey, requestJson,
+                InquiryResponseMode.ASYNC_CALLBACK,
                 callbackTransport, callbackDestination, callbackCorrelationId, now
         );
         request.reuse(source, true, now);
@@ -185,39 +192,39 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
         attemptCount++;
     }
 
-    public void waitForProvider(String provider, String trackingCode, Instant nextPollAt) {
+    public void waitForProvider(String provider, String executionContext, Instant nextPollAt) {
         requireProcessing();
         providerCode = normalized(provider, "providerCode");
-        externalTrackingCode = normalized(trackingCode, "externalTrackingCode");
+        executionContextJson = Preconditions.requireText(executionContext, "executionContextJson");
         nextAttemptAt = Preconditions.requireNonNull(nextPollAt, "nextPollAt");
         processingStartedAt = null;
         status = InquiryStatus.WAITING_PROVIDER;
     }
 
-    public void complete(String provider, String trackingCode, String facts, Instant now) {
-        complete(provider, trackingCode, facts, now, now);
+    public void complete(String provider, String executionContext, String facts, Instant now) {
+        complete(provider, executionContext, facts, now, now);
     }
 
     public void complete(
             String provider,
-            String trackingCode,
+            String executionContext,
             String result,
             Instant now,
             Instant validUntil
     ) {
         requireProcessing();
         providerCode = provider;
-        externalTrackingCode = trackingCode;
+        executionContextJson = executionContext;
         resultJson = Preconditions.requireText(result, "resultJson");
         completedAt = Preconditions.requireNonNull(now, "now");
         this.validUntil = Preconditions.requireNonNull(validUntil, "validUntil");
         terminal(InquiryStatus.COMPLETED, now);
     }
 
-    public void reject(String provider, String trackingCode, String code, String message, Instant now) {
+    public void reject(String provider, String executionContext, String code, String message, Instant now) {
         requireProcessing();
         providerCode = provider;
-        externalTrackingCode = trackingCode;
+        executionContextJson = executionContext;
         rejectionCode = code;
         resultMessage = limited(message, "Inquiry provider rejected the request");
         terminal(InquiryStatus.REJECTED, now);
@@ -262,14 +269,10 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
         callbackStatus = InquiryCallbackStatus.FAILED;
     }
 
-    public boolean polling() {
-        return externalTrackingCode != null;
-    }
-
     private void terminal(InquiryStatus terminalStatus, Instant now) {
         status = terminalStatus;
         processingStartedAt = null;
-        if (callbackTransport != null) {
+        if (responseMode == InquiryResponseMode.ASYNC_CALLBACK) {
             callbackStatus = InquiryCallbackStatus.PENDING;
             callbackNextAttemptAt = Preconditions.requireNonNull(now, "now");
         } else {
@@ -280,12 +283,13 @@ public class InquiryRequestEntity extends AbstractAuditableUuidEntity {
     private void reuse(InquiryRequestEntity source, boolean callbackRequired, Instant now) {
         Preconditions.require(source.status == InquiryStatus.COMPLETED, "source must be completed");
         providerCode = source.providerCode;
-        externalTrackingCode = source.externalTrackingCode;
+        executionContextJson = source.executionContextJson;
         resultJson = Preconditions.requireText(source.resultJson, "source.resultJson");
         completedAt = Preconditions.requireNonNull(now, "now");
         validUntil = Preconditions.requireNonNull(source.validUntil, "source.validUntil");
         reusedFromRequestId = Preconditions.requireNonNull(source.getId(), "source.id");
         cacheHit = true;
+        responseMode = callbackRequired ? InquiryResponseMode.ASYNC_CALLBACK : InquiryResponseMode.SYNCHRONOUS;
         status = InquiryStatus.COMPLETED;
         processingStartedAt = null;
         if (callbackRequired) {

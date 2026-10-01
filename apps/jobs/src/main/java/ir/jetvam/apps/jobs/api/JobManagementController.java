@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import ir.jetvam.apps.jobs.infrastructure.service.CreateJobDefinitionCommand;
 import ir.jetvam.apps.jobs.infrastructure.service.JobDefinitionView;
 import ir.jetvam.apps.jobs.infrastructure.service.JobExecutionView;
+import ir.jetvam.apps.jobs.infrastructure.service.JobExecutionItemView;
 import ir.jetvam.apps.jobs.infrastructure.service.JobManagementService;
 import ir.jetvam.apps.jobs.infrastructure.service.JobStatisticsView;
 import ir.jetvam.apps.jobs.infrastructure.service.UpdateJobDefinitionCommand;
@@ -104,6 +105,17 @@ public class JobManagementController {
             Pageable pageable
     ) {
         return service.history(id, pageable);
+    }
+
+    @GetMapping("/{id}/executions/{executionId}/items")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM_OPERATOR', 'UAA_ADMIN') and hasAuthority('jobs:read')")
+    @Operation(summary = "Get job execution items", description = "Returns the business records processed during one job execution.")
+    public Page<JobExecutionItemView> executionItems(
+            @PathVariable UUID id,
+            @PathVariable UUID executionId,
+            @PageableDefault(size = 50, sort = "sequenceNumber") Pageable pageable
+    ) {
+        return service.executionItems(id, executionId, pageable);
     }
 
     @GetMapping("/{id}/statistics")

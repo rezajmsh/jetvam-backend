@@ -1,20 +1,19 @@
 package ir.jetvam.modules.inquiry.service;
 
-import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.inquiry.InquiryType;
-import ir.jetvam.modules.integration.routing.ProviderExecution;
+import ir.jetvam.modules.inquiry.model.InquiryResponseMode;
+import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
-import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 /**
  * Verifies durable synchronous execution and reuse of unexpired inquiry results.
@@ -24,61 +23,43 @@ import static org.mockito.Mockito.when;
  */
 class PersistentInquiryServiceTest {
 
-    private final RoutingInquiryService providerService = mock(RoutingInquiryService.class);
-    private final InquiryExecutionStore executionStore = mock(InquiryExecutionStore.class);
-    private final ObjectMapper objectMapper = new ObjectMapper();
-    private final PersistentInquiryService service = new PersistentInquiryService(
-            providerService, executionStore, objectMapper
-    );
+    private final InquiryRequestService requestService = mock(InquiryRequestService.class);
+    private final PersistentInquiryService service = new PersistentInquiryService(requestService);
 
     @Test
-    void returnsValidPersistedResultWithoutCallingProvider() throws Exception {
-        InquiryResults.CreditRating cached = new InquiryResults.CreditRating(
-                "A2", 8, BigDecimal.valueOf(720), "cached-1"
-        );
+    void submitsSynchronousCommandAndMapsPersistedFacts() {
         UUID requestId = UUID.randomUUID();
-        when(executionStore.prepare(
-                org.mockito.ArgumentMatchers.eq(InquiryType.CREDIT_RATING),
-                org.mockito.ArgumentMatchers.eq("0067749828"),
-                org.mockito.ArgumentMatchers.eq("0067749828"),
-                anyString()
-        )).thenReturn(new InquiryExecutionStore.Preparation(
-                requestId, objectMapper.writeValueAsString(cached), true, Duration.ofDays(7)
+        when(requestService.submit(any())).thenReturn(new InquirySubmissionModels.Result(
+                requestId, InquiryStatus.COMPLETED,
+                Map.of("ratingCode", "A2", "rank", "8", "score", "720", "trackingId", "cached-1"),
+                "CREDIT_BUREAU", null, null, true, null
         ));
 
         InquiryResults.CreditRating result = service.findCreditRating(
                 new InquiryRequests.CreditRating("۰۰۶۷۷۴۹۸۲۸")
         );
 
-        assertThat(result).isEqualTo(cached);
-        verify(providerService, never()).findCreditRating(org.mockito.ArgumentMatchers.any());
+        assertThat(result).isEqualTo(new InquiryResults.CreditRating(
+                "A2", 8, BigDecimal.valueOf(720), "cached-1"
+        ));
+        var captor = org.mockito.ArgumentCaptor.forClass(InquirySubmissionModels.Command.class);
+        verify(requestService).submit(captor.capture());
+        assertThat(captor.getValue().inquiryType()).isEqualTo(InquiryType.CREDIT_RATING);
+        assertThat(captor.getValue().responseMode()).isEqualTo(InquiryResponseMode.SYNCHRONOUS);
+        assertThat(captor.getValue().nationalCode()).isEqualTo("0067749828");
     }
 
     @Test
-    void persistsProviderResultWithItsValidity() {
-        InquiryRequests.BadCheque normalized = new InquiryRequests.BadCheque("0067749828");
-        InquiryResults.BadCheque providerResult = new InquiryResults.BadCheque(
-                0, BigDecimal.ZERO, "provider-1"
-        );
-        UUID requestId = UUID.randomUUID();
-        Duration validity = Duration.ofDays(1);
-        when(executionStore.prepare(
-                org.mockito.ArgumentMatchers.eq(InquiryType.BAD_CHEQUE),
-                org.mockito.ArgumentMatchers.eq("0067749828"),
-                org.mockito.ArgumentMatchers.eq("0067749828"),
-                anyString()
-        )).thenReturn(new InquiryExecutionStore.Preparation(requestId, null, false, validity));
-        when(providerService.findBadCheques(normalized))
-                .thenReturn(new ProviderExecution<>("CHEQUE_PROVIDER", providerResult));
+    void usesMobileInSubjectKeyToKeepShahkarReuseSafe() {
+        when(requestService.submit(any())).thenReturn(new InquirySubmissionModels.Result(
+                UUID.randomUUID(), InquiryStatus.COMPLETED, Map.of("matched", "true", "trackingId", "track-1"),
+                "SHAHKAR", null, null, false, null
+        ));
 
-        assertThat(service.findBadCheques(normalized)).isEqualTo(providerResult);
+        service.verifyMobileOwnership(new InquiryRequests.MobileOwnership("09121234567", "0067749828"));
 
-        verify(executionStore).complete(
-                org.mockito.ArgumentMatchers.eq(requestId),
-                org.mockito.ArgumentMatchers.eq("CHEQUE_PROVIDER"),
-                org.mockito.ArgumentMatchers.eq("provider-1"),
-                anyString(),
-                org.mockito.ArgumentMatchers.eq(validity)
-        );
+        var captor = org.mockito.ArgumentCaptor.forClass(InquirySubmissionModels.Command.class);
+        verify(requestService).submit(captor.capture());
+        assertThat(captor.getValue().subjectKey()).isEqualTo("0067749828:09121234567");
     }
 }

@@ -86,7 +86,13 @@ public class DefaultIndividualPartyManagementService implements IndividualPartyM
     private static IndividualPartyView toView(IndividualPartyEntity individual) {
         return new IndividualPartyView(
                 individual.getId(), individual.getDisplayName(), individual.getNationalCode(),
-                individual.getFirstName(), individual.getLastName(), individual.getBirthDate(), individual.getMobile()
+                individual.getFirstName(), individual.getLastName(), individual.getBirthDate(), individual.getMobile(),
+                individual.getMobileVerificationStatus(), individual.getMobileVerifiedAt(),
+                individual.getShahkarStatus(), individual.getShahkarVerifiedAt(), individual.getShahkarTrackingId(),
+                individual.getIdentityVerificationStatus(), individual.getIdentityVerifiedAt(),
+                individual.getBankCardNumber(), individual.getLandline(), individual.getPostalCode(),
+                individual.getAddress(), individual.hasCompleteIdentityInformation(),
+                individual.hasCompletePersonalInformation()
         );
     }
 }

@@ -9,6 +9,8 @@ create table job_definition
     cron_expression varchar(120)             not null,
     time_zone       varchar(80)              not null,
     enabled         boolean                  not null default true,
+    lock_owner      varchar(200),
+    lock_until      timestamp with time zone,
     created_at      timestamp with time zone not null default current_timestamp,
     updated_at      timestamp with time zone not null default current_timestamp,
     constraint uk_job_definition_code unique (code),
@@ -54,169 +56,43 @@ create index ix_job_execution_definition_created
 create index ix_job_execution_status_created
     on job_execution (status, created_at desc);
 
-create table qrtz_job_details
+create index ix_job_definition_lock
+    on job_definition (lock_until) where lock_until is not null;
+
+create table job_execution_item
 (
-    sched_name varchar(120) not null,
-    job_name varchar(200) not null,
-    job_group varchar(200) not null,
-    description varchar(250),
-    job_class_name varchar(250) not null,
-    is_durable boolean not null,
-    is_nonconcurrent boolean not null,
-    is_update_data boolean not null,
-    requests_recovery boolean not null,
-    job_data bytea,
-    primary key (sched_name, job_name, job_group)
+    id                 uuid primary key,
+    version            bigint                   not null default 0,
+    job_execution_id   uuid                     not null references job_execution (id),
+    sequence_number    integer                  not null,
+    item_type          varchar(50)              not null,
+    item_key           varchar(150)             not null,
+    operation_code     varchar(100),
+    subject_identifier varchar(150),
+    subject_key        varchar(150),
+    status             varchar(20)              not null,
+    business_status    varchar(80),
+    provider_code      varchar(100),
+    external_reference varchar(150),
+    message            varchar(1000),
+    created_at         timestamp with time zone not null default current_timestamp,
+    updated_at         timestamp with time zone not null default current_timestamp,
+    constraint uk_job_execution_item_sequence unique (job_execution_id, sequence_number),
+    constraint ck_job_execution_item_status check (status in ('SUCCEEDED', 'FAILED')),
+    constraint ck_job_execution_item_sequence check (sequence_number > 0)
 );
 
-create table qrtz_triggers
-(
-    sched_name varchar(120) not null,
-    trigger_name varchar(200) not null,
-    trigger_group varchar(200) not null,
-    job_name varchar(200) not null,
-    job_group varchar(200) not null,
-    description varchar(250),
-    next_fire_time bigint,
-    prev_fire_time bigint,
-    priority integer,
-    trigger_state varchar(16) not null,
-    trigger_type varchar(8) not null,
-    start_time bigint not null,
-    end_time bigint,
-    calendar_name varchar(200),
-    misfire_instr smallint,
-    job_data bytea,
-    primary key (sched_name, trigger_name, trigger_group),
-    foreign key (sched_name, job_name, job_group)
-        references qrtz_job_details (sched_name, job_name, job_group)
-);
+create index ix_job_execution_item_execution
+    on job_execution_item (job_execution_id, sequence_number);
 
-create table qrtz_simple_triggers
-(
-    sched_name varchar(120) not null,
-    trigger_name varchar(200) not null,
-    trigger_group varchar(200) not null,
-    repeat_count bigint not null,
-    repeat_interval bigint not null,
-    times_triggered bigint not null,
-    primary key (sched_name, trigger_name, trigger_group),
-    foreign key (sched_name, trigger_name, trigger_group)
-        references qrtz_triggers (sched_name, trigger_name, trigger_group)
-);
+create index ix_job_execution_item_subject
+    on job_execution_item (subject_identifier, operation_code);
 
-create table qrtz_cron_triggers
-(
-    sched_name varchar(120) not null,
-    trigger_name varchar(200) not null,
-    trigger_group varchar(200) not null,
-    cron_expression varchar(120) not null,
-    time_zone_id varchar(80),
-    primary key (sched_name, trigger_name, trigger_group),
-    foreign key (sched_name, trigger_name, trigger_group)
-        references qrtz_triggers (sched_name, trigger_name, trigger_group)
-);
-
-create table qrtz_simprop_triggers
-(
-    sched_name varchar(120) not null,
-    trigger_name varchar(200) not null,
-    trigger_group varchar(200) not null,
-    str_prop_1 varchar(512), str_prop_2 varchar(512), str_prop_3 varchar(512),
-    int_prop_1 integer, int_prop_2 integer,
-    long_prop_1 bigint, long_prop_2 bigint,
-    dec_prop_1 numeric(13, 4), dec_prop_2 numeric(13, 4),
-    bool_prop_1 boolean, bool_prop_2 boolean,
-    primary key (sched_name, trigger_name, trigger_group),
-    foreign key (sched_name, trigger_name, trigger_group)
-        references qrtz_triggers (sched_name, trigger_name, trigger_group)
-);
-
-create table qrtz_blob_triggers
-(
-    sched_name varchar(120) not null,
-    trigger_name varchar(200) not null,
-    trigger_group varchar(200) not null,
-    blob_data bytea,
-    primary key (sched_name, trigger_name, trigger_group),
-    foreign key (sched_name, trigger_name, trigger_group)
-        references qrtz_triggers (sched_name, trigger_name, trigger_group)
-);
-
-create table qrtz_calendars
-(
-    sched_name varchar(120) not null,
-    calendar_name varchar(200) not null,
-    calendar bytea not null,
-    primary key (sched_name, calendar_name)
-);
-
-create table qrtz_paused_trigger_grps
-(
-    sched_name varchar(120) not null,
-    trigger_group varchar(200) not null,
-    primary key (sched_name, trigger_group)
-);
-
-create table qrtz_fired_triggers
-(
-    sched_name varchar(120) not null,
-    entry_id varchar(95) not null,
-    trigger_name varchar(200) not null,
-    trigger_group varchar(200) not null,
-    instance_name varchar(200) not null,
-    fired_time bigint not null,
-    sched_time bigint not null,
-    priority integer not null,
-    state varchar(16) not null,
-    job_name varchar(200),
-    job_group varchar(200),
-    is_nonconcurrent boolean,
-    requests_recovery boolean,
-    primary key (sched_name, entry_id)
-);
-
-create table qrtz_scheduler_state
-(
-    sched_name varchar(120) not null,
-    instance_name varchar(200) not null,
-    last_checkin_time bigint not null,
-    checkin_interval bigint not null,
-    primary key (sched_name, instance_name)
-);
-
-create table qrtz_locks
-(
-    sched_name varchar(120) not null,
-    lock_name varchar(40) not null,
-    primary key (sched_name, lock_name)
-);
-
-create index idx_qrtz_j_req_recovery on qrtz_job_details (sched_name, requests_recovery);
-create index idx_qrtz_j_grp on qrtz_job_details (sched_name, job_group);
-create index idx_qrtz_t_j on qrtz_triggers (sched_name, job_name, job_group);
-create index idx_qrtz_t_jg on qrtz_triggers (sched_name, job_group);
-create index idx_qrtz_t_c on qrtz_triggers (sched_name, calendar_name);
-create index idx_qrtz_t_g on qrtz_triggers (sched_name, trigger_group);
-create index idx_qrtz_t_state on qrtz_triggers (sched_name, trigger_state);
-create index idx_qrtz_t_n_state on qrtz_triggers (sched_name, trigger_name, trigger_group, trigger_state);
-create index idx_qrtz_t_n_g_state on qrtz_triggers (sched_name, trigger_group, trigger_state);
-create index idx_qrtz_t_next_fire_time on qrtz_triggers (sched_name, next_fire_time);
-create index idx_qrtz_t_nft_st on qrtz_triggers (sched_name, trigger_state, next_fire_time);
-create index idx_qrtz_t_nft_misfire on qrtz_triggers (sched_name, misfire_instr, next_fire_time);
-create index idx_qrtz_t_nft_st_misfire on qrtz_triggers (sched_name, misfire_instr, next_fire_time, trigger_state);
-create index idx_qrtz_t_nft_st_misfire_grp
-    on qrtz_triggers (sched_name, misfire_instr, next_fire_time, trigger_group, trigger_state);
-create index idx_qrtz_ft_trig_inst_name on qrtz_fired_triggers (sched_name, instance_name);
-create index idx_qrtz_ft_inst_job_req_rcvry
-    on qrtz_fired_triggers (sched_name, instance_name, requests_recovery);
-create index idx_qrtz_ft_j_g on qrtz_fired_triggers (sched_name, job_name, job_group);
-create index idx_qrtz_ft_jg on qrtz_fired_triggers (sched_name, job_group);
-create index idx_qrtz_ft_t_g on qrtz_fired_triggers (sched_name, trigger_name, trigger_group);
-create index idx_qrtz_ft_tg on qrtz_fired_triggers (sched_name, trigger_group);
-
-comment on table job_definition is 'Operational job catalog synchronized to Quartz';
+comment on table job_definition is
+    'Application-owned background job catalog and distributed execution lease';
 comment on table job_execution is 'Unified scheduled and manual job execution history';
+comment on table job_execution_item is
+    'Immutable item-level audit trail for every managed job execution';
 
 insert into job_definition
     (id, version, code, display_name, description, handler_key, cron_expression, time_zone, enabled)
@@ -225,7 +101,11 @@ values
      'Notification outbox dispatcher',
      'Claims due notification outbox records and delegates delivery to the notification module',
      'notification-dispatch', '0/5 * * * * ?', 'Asia/Tehran', true),
-    ('b981498a-122b-48a1-851d-338259c0f2a2', 0, 'inquiry-dispatch',
-     'Inquiry dispatcher',
-     'Executes due provider requests and delivers completion callbacks for every inquiry consumer',
-     'inquiry-dispatch', '0/15 * * * * ?', 'Asia/Tehran', true);
+    ('b981498a-122b-48a1-851d-338259c0f2a2', 0, 'inquiry-execution',
+     'Inquiry provider execution',
+     'Claims queued inquiry requests and executes provider submission or polling',
+     'inquiry-execution', '0/15 * * * * ?', 'Asia/Tehran', true),
+    ('b981498a-122b-48a1-851d-338259c0f2a3', 0, 'inquiry-callback',
+     'Inquiry callback delivery',
+     'Delivers completed inquiry results to their configured workflow consumers',
+     'inquiry-callback', '0/5 * * * * ?', 'Asia/Tehran', true);

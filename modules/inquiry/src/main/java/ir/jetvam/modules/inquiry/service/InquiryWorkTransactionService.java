@@ -6,6 +6,9 @@ import tools.jackson.databind.ObjectMapper;
 import ir.jetvam.common.exception.ResourceNotFoundException;
 import ir.jetvam.common.time.TimeProvider;
 import ir.jetvam.modules.inquiry.model.InquiryCallbackStatus;
+import ir.jetvam.modules.inquiry.execution.InquiryExecutionContext;
+import ir.jetvam.modules.inquiry.execution.InquiryExecutionResult;
+import ir.jetvam.modules.inquiry.execution.InquiryExecutionStatus;
 import ir.jetvam.modules.inquiry.model.InquiryRequestEntity;
 import ir.jetvam.modules.inquiry.model.InquiryStatus;
 import ir.jetvam.modules.inquiry.repository.InquiryRequestRepository;
@@ -50,32 +53,36 @@ public class InquiryWorkTransactionService {
     public Optional<AsyncInquiryModels.WorkItem> prepareNext() {
         return requestRepository.findDue(CLAIMABLE, timeProvider.now(), PageRequest.of(0, 1)).stream()
                 .findFirst()
-                .map(request -> {
-                    request.start(timeProvider.now());
-                    return new AsyncInquiryModels.WorkItem(
-                            request.getId(), request.getInquiryCode(), request.getNationalCode(),
-                            request.getProviderCode(), request.getExternalTrackingCode()
-                    );
-                });
+                .map(this::claim);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void complete(UUID requestId, DeferredInquiryModels.Result result) {
+    public Optional<AsyncInquiryModels.WorkItem> prepare(UUID requestId) {
+        InquiryRequestEntity request = requestRepository.findLockedById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("inquiryRequest", requestId));
+        boolean claimable = CLAIMABLE.contains(request.getStatus())
+                && request.getNextAttemptAt() != null
+                && !request.getNextAttemptAt().isAfter(timeProvider.now());
+        return claimable ? Optional.of(claim(request)) : Optional.empty();
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void complete(UUID requestId, InquiryExecutionResult result) {
         InquiryRequestEntity request = find(requestId);
-        if (result.status() == DeferredInquiryStatus.PENDING) {
+        if (result.status() == InquiryExecutionStatus.PENDING) {
             request.waitForProvider(
-                    result.providerCode(), result.externalTrackingCode(),
+                    result.context().providerCode(), writeContext(result.context()),
                     timeProvider.now().plusSeconds(Math.max(30, result.retryAfterSeconds()))
             );
-        } else if (result.status() == DeferredInquiryStatus.REJECTED) {
+        } else if (result.status() == InquiryExecutionStatus.REJECTED) {
             request.reject(
-                    result.providerCode(), result.externalTrackingCode(), result.rejectionCode(),
+                    result.context().providerCode(), writeContext(result.context()), result.rejectionCode(),
                     result.rejectionMessage(), timeProvider.now()
             );
         } else {
             var now = timeProvider.now();
             request.complete(
-                    result.providerCode(), result.externalTrackingCode(), writeFacts(result.facts()),
+                    result.context().providerCode(), writeContext(result.context()), writeFacts(result.facts()),
                     now,
                     now.plus(definitionService.validity(request.getInquiryCode()))
             );
@@ -124,11 +131,29 @@ public class InquiryWorkTransactionService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recoverStale() {
+        recoverStaleExecutionsInternal();
+        recoverStaleCallbacksInternal();
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recoverStaleExecutions() {
+        recoverStaleExecutionsInternal();
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recoverStaleCallbacks() {
+        recoverStaleCallbacksInternal();
+    }
+
+    private void recoverStaleExecutionsInternal() {
         requestRepository.findStale(
                 InquiryStatus.PROCESSING,
                 timeProvider.now().minus(LEASE),
                 PageRequest.of(0, 100)
         ).forEach(request -> request.retry("Recovered after processing lease expired", timeProvider.now()));
+    }
+
+    private void recoverStaleCallbacksInternal() {
         requestRepository.findStaleCallbacks(
                 InquiryCallbackStatus.PROCESSING,
                 timeProvider.now().minus(LEASE),
@@ -144,10 +169,26 @@ public class InquiryWorkTransactionService {
                 request.getCallbackTransport(), request.getCallbackDestination(), request.getCallbackCorrelationId()
         );
         AsyncInquiryModels.CompletionEvent event = new AsyncInquiryModels.CompletionEvent(
-                request.getId(), request.getInquiryCode(), request.getStatus(), readFacts(request.getResultJson()),
+                request.getId(), request.getInquiryCode(), request.getNationalCode(), consumerReference(request),
+                request.getProviderCode(), request.getStatus(), readFacts(request.getResultJson()),
                 request.getRejectionCode(), request.getResultMessage(), request.getCallbackCorrelationId()
         );
         return new AsyncInquiryModels.CallbackWork(callback, event);
+    }
+
+    private AsyncInquiryModels.WorkItem claim(InquiryRequestEntity request) {
+        request.start(timeProvider.now());
+        return new AsyncInquiryModels.WorkItem(
+                request.getId(), request.getInquiryCode(), request.getNationalCode(),
+                consumerReference(request), request.getRequestJson(), request.getResponseMode(),
+                readContext(request.getProviderCode(), request.getExecutionContextJson())
+        );
+    }
+
+    private static String consumerReference(InquiryRequestEntity request) {
+        return request.getCallbackCorrelationId() == null || request.getCallbackCorrelationId().isBlank()
+                ? request.getSubjectKey()
+                : request.getCallbackCorrelationId();
     }
 
     private InquiryRequestEntity find(UUID requestId) {
@@ -160,6 +201,27 @@ public class InquiryWorkTransactionService {
             return objectMapper.writeValueAsString(facts);
         } catch (JacksonException exception) {
             throw new IllegalArgumentException("Unable to persist inquiry facts", exception);
+        }
+    }
+
+    private String writeContext(InquiryExecutionContext context) {
+        try {
+            return objectMapper.writeValueAsString(context.data());
+        } catch (JacksonException exception) {
+            throw new IllegalArgumentException("Unable to persist inquiry execution context", exception);
+        }
+    }
+
+    private InquiryExecutionContext readContext(String providerCode, String json) {
+        if (json == null || json.isBlank()) {
+            return new InquiryExecutionContext(providerCode, Map.of());
+        }
+        try {
+            Map<String, String> data = objectMapper.readValue(json, new TypeReference<>() {
+            });
+            return new InquiryExecutionContext(providerCode, data);
+        } catch (JacksonException exception) {
+            throw new IllegalArgumentException("Unable to read inquiry execution context", exception);
         }
     }
 

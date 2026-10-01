@@ -1,7 +1,5 @@
 package ir.jetvam.modules.inquiry.provider;
 
-import ir.jetvam.modules.inquiry.service.DeferredInquiryStatus;
-
 import java.math.BigDecimal;
 
 /**
@@ -22,7 +20,7 @@ public final class CreditRatingProtocol {
     }
 
     public record Progress(
-            DeferredInquiryStatus status,
+            CreditRatingProgressStatus status,
             String trackingCode,
             int retryAfterSeconds,
             String ratingCode,

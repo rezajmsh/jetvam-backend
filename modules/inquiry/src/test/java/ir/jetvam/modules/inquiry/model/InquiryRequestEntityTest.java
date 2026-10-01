@@ -22,13 +22,23 @@ class InquiryRequestEntityTest {
         InquiryRequestEntity request = request();
 
         request.start(NOW);
-        request.waitForProvider("credit-provider", "tracking-42", NOW.plusSeconds(60));
+        request.waitForProvider(
+                "credit-provider",
+                "{\"stage\":\"POLL\",\"trackingCode\":\"tracking-42\"}",
+                NOW.plusSeconds(60)
+        );
         request.start(NOW.plusSeconds(60));
-        request.complete("credit-provider", "tracking-42", "{\"rank\":\"5\"}", NOW.plusSeconds(61));
+        request.complete(
+                "credit-provider",
+                "{\"stage\":\"POLL\",\"trackingCode\":\"tracking-42\"}",
+                "{\"rank\":\"5\"}",
+                NOW.plusSeconds(61)
+        );
 
         assertThat(request.getStatus()).isEqualTo(InquiryStatus.COMPLETED);
         assertThat(request.getProviderCode()).isEqualTo("credit-provider");
-        assertThat(request.getExternalTrackingCode()).isEqualTo("tracking-42");
+        assertThat(request.getExecutionContextJson()).contains("\"stage\":\"POLL\"");
+        assertThat(request.getExecutionContextJson()).contains("\"trackingCode\":\"tracking-42\"");
         assertThat(request.getAttemptCount()).isEqualTo(2);
         assertThat(request.getCallbackStatus()).isEqualTo(InquiryCallbackStatus.PENDING);
         assertThat(request.getCallbackNextAttemptAt()).isEqualTo(NOW.plusSeconds(61));
@@ -58,6 +68,7 @@ class InquiryRequestEntityTest {
                 "0013546789",
                 "0013546789",
                 "{\"nationalCode\":\"0013546789\"}",
+                InquiryResponseMode.ASYNC_CALLBACK,
                 "SPRING_BEAN",
                 "origination-application-inquiry",
                 "application-inquiry-id",

@@ -2,7 +2,6 @@ package ir.jetvam.modules.inquiry.provider;
 
 import ir.jetvam.common.validation.Preconditions;
 import ir.jetvam.common.inquiry.InquiryType;
-import ir.jetvam.modules.inquiry.service.DeferredInquiryStatus;
 import ir.jetvam.modules.integration.routing.ExternalProviderAdapter;
 import ir.jetvam.modules.integration.routing.ProviderInvocationContext;
 import org.springframework.stereotype.Component;
@@ -35,7 +34,7 @@ public final class MockCreditRatingPollAdapter implements ExternalProviderAdapte
         Preconditions.requireNonNull(command, "command");
         String trackingCode = Preconditions.requireText(command.trackingCode(), "trackingCode");
         return new CreditRatingProtocol.Progress(
-                DeferredInquiryStatus.COMPLETED,
+                CreditRatingProgressStatus.COMPLETED,
                 trackingCode,
                 0,
                 "A2",
